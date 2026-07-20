@@ -1,0 +1,14 @@
+# The corpus and token bins are 16 GB - tracked on disk, never in git.
+data/
+
+# Generated fine-tuning artifacts
+*.jsonl
+chunk_emb.npy
+reports/
+
+# Env / secrets
+.env
+.env.local
+.venv/
+__pycache__/
+*.pyc
