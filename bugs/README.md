@@ -14,8 +14,12 @@ how it was fixed, what alternatives existed, and why those were not chosen.
 | [07](07-self-reference-filter-aux.md) | Self-ref filter deleted valid aux | logic bug | `build.py` |
 | [08](08-torn-jsonl-lines.md) | 27 corrupt lines crashed the reader | robustness | `build.py` |
 | [09](09-cost-estimate-error.md) | Cost under-estimated ~6× ($5-6 vs ~$25-30) | estimation | analysis |
+| [10](10-raft-duplicate-documents.md) | 15.3% of RAFT prompts had duplicate documents | logic bug | `build.py` |
+| [11](11-answerable-absent-topic-mismatch.md) | RAFT "golden-present-but-absent" was off-topic | logic bug | `build.py` |
 
 Bugs 01–03 were caught during validation before the full run. Bugs 04–07 were caught by reading
 the assembly output counts (aux tasks vanishing, train pool shrinking) rather than crashes —
 they would have silently produced a skewed dataset. Bug 09 had real consequences: the $5 balance
-depleted after generation, before the judge stage.
+depleted after generation, before the judge stage. Bugs 10–11 were caught by **inspecting actual
+dataset examples** — neither crashed nor showed in aggregate counts; only reading the rows
+revealed them. Both are assembly-only fixes (no re-generation, no API cost).

@@ -207,16 +207,32 @@ def build_index(pool: list[dict]):
     return emb
 
 
-def pick_distractors(i, emb, pool, k, golden_doc):
-    sims = emb @ emb[i]; sims[i] = -1
+def _distinct_take(order, pool, k, exclude_doc, seen_texts):
+    """Take k indices from `order`, skipping the excluded doc and any passage whose text
+    already appears (dedupes exact-duplicate documents in a RAFT prompt)."""
     out = []
-    for j in np.argsort(-sims):
-        if pool[j]["doc_id"] == golden_doc:
+    for j in order:
+        if pool[int(j)]["doc_id"] == exclude_doc:
             continue
-        out.append(j)
+        t = norm(pool[int(j)]["passage"])
+        if t in seen_texts:
+            continue
+        seen_texts.add(t); out.append(int(j))
         if len(out) == k:
             break
     return out
+
+
+def pick_distractors(i, emb, pool, k, exclude_doc, golden_text):
+    """Top-k topically-similar distractors: distinct doc_id AND distinct text from the
+    golden and from each other."""
+    sims = emb @ emb[i]; sims[i] = -1
+    return _distinct_take(np.argsort(-sims), pool, k, exclude_doc, {norm(golden_text)})
+
+
+def random_distractors(k, pool, exclude_doc, golden_text, rng):
+    order = list(range(len(pool))); rng.shuffle(order)
+    return _distinct_take(order, pool, k, exclude_doc, {norm(golden_text)})
 
 
 # ---------------- rendering ----------------
@@ -296,34 +312,42 @@ def main():
     unans = [r for r in train if r["task"] == "unanswerable"]
     emb = build_index(golden)
     raft = []
-    n_golden = int(C.RAFT_SIZE * C.RAFT_P_GOLDEN)
-    n_absent = int(n_golden * C.ANSWERABLE_ABSENT_FRAC)
-    for i, r in enumerate(golden[:n_golden]):
-        dists = pick_distractors(i, emb, golden, C.RAFT_K, r["doc_id"])
-        docs = [golden[j]["passage"] for j in dists]
-        answerable_absent = i < n_absent and unans
-        if answerable_absent:                                    # golden present, but ask an absent Q
-            uq = unans[i % len(unans)]["question"]
-            docs.insert(RNG.randrange(len(docs) + 1), r["passage"])
-            ctx = "\n\n".join(f"[Document {d+1}]\n{t}" for d, t in enumerate(docs))
-            raft.append(chat(SYS_RAFT, f"{ctx}\n\nQuestion: {uq}", C.ABSTAIN_STRING,
-                             {"mode": "raft", "golden_present": True, "answerable": False,
-                              "source": r["source"], "chunk_id": r["chunk_id"], "doc_id": r["doc_id"]}))
-        else:
-            docs.insert(RNG.randrange(len(docs) + 1), r["passage"])
-            ctx = "\n\n".join(f"[Document {d+1}]\n{t}" for d, t in enumerate(docs))
-            ans = f"##begin_quote## {r['quote']} ##end_quote##\n{r['answer']}"
-            raft.append(chat(SYS_RAFT, f"{ctx}\n\nQuestion: {r['question']}", ans,
-                             {"mode": "raft", "golden_present": True, "answerable": True,
-                              "source": r["source"], "chunk_id": r["chunk_id"], "doc_id": r["doc_id"]}))
-    # distractors-only abstention
+    def ctx_of(docs):
+        return "\n\n".join(f"[Document {d+1}]\n{t}" for d, t in enumerate(docs))
+
+    n_golden = int(C.RAFT_SIZE * C.RAFT_P_GOLDEN)          # 8000 golden-present
+    n_absent = int(n_golden * C.ANSWERABLE_ABSENT_FRAC)    # 800 of those: answer absent
+    n_answerable = n_golden - n_absent                     # 7200 answerable
+
+    # (a) golden present, answerable — quote-first over topically-similar distractors
+    for i, r in enumerate(golden[:n_answerable]):
+        dd = pick_distractors(i, emb, golden, C.RAFT_K, r["doc_id"], r["passage"])
+        docs = [golden[j]["passage"] for j in dd]
+        docs.insert(RNG.randrange(len(docs) + 1), r["passage"])
+        ans = f"##begin_quote## {r['quote']} ##end_quote##\n{r['answer']}"
+        raft.append(chat(SYS_RAFT, f"{ctx_of(docs)}\n\nQuestion: {r['question']}", ans,
+                         {"mode": "raft", "golden_present": True, "answerable": True,
+                          "source": r["source"], "chunk_id": r["chunk_id"], "doc_id": r["doc_id"]}))
+
+    # (b) golden present but answer ABSENT — the golden IS the unanswerable question's OWN
+    #     passage (on-topic), so the question is about the right document but its specific
+    #     answer isn't there. That is the subtle case; abstain.
+    for u in unans[:n_absent]:
+        dd = random_distractors(C.RAFT_K, golden, u["doc_id"], u["passage"], RNG)
+        docs = [golden[j]["passage"] for j in dd]
+        docs.insert(RNG.randrange(len(docs) + 1), u["passage"])
+        raft.append(chat(SYS_RAFT, f"{ctx_of(docs)}\n\nQuestion: {u['question']}", C.ABSTAIN_STRING,
+                         {"mode": "raft", "golden_present": True, "answerable": False,
+                          "source": u["source"], "chunk_id": u["chunk_id"], "doc_id": u["doc_id"]}))
+
+    # (c) distractors only — question asked, golden not retrieved -> abstain. The golden's own
+    #     passage is excluded (by doc_id and text) so its answer never leaks in as a distractor.
     n_distractoronly = C.RAFT_SIZE - len(raft)
     for i in range(n_distractoronly):
-        base = golden[(n_golden + i) % len(golden)]
-        dists = pick_distractors((n_golden + i) % len(golden), emb, golden, C.RAFT_K, base["doc_id"])
-        docs = [golden[j]["passage"] for j in dists]
-        ctx = "\n\n".join(f"[Document {d+1}]\n{t}" for d, t in enumerate(docs))
-        raft.append(chat(SYS_RAFT, f"{ctx}\n\nQuestion: {base['question']}", C.ABSTAIN_STRING,
+        base = golden[(n_answerable + i) % len(golden)]
+        dd = random_distractors(C.RAFT_K, golden, base["doc_id"], base["passage"], RNG)
+        docs = [golden[j]["passage"] for j in dd]
+        raft.append(chat(SYS_RAFT, f"{ctx_of(docs)}\n\nQuestion: {base['question']}", C.ABSTAIN_STRING,
                          {"mode": "raft", "golden_present": False, "answerable": False,
                           "source": base["source"], "chunk_id": base["chunk_id"], "doc_id": base["doc_id"]}))
     RNG.shuffle(raft)
@@ -331,20 +355,13 @@ def main():
 
     # ---- eval (matched conditions) ----
     eval_rows = []
-    ei = {r["chunk_id"]: i for i, r in enumerate(golden)}
     for r in eval_pool:
-        idx = golden.index(r) if r in golden else None
         gp = r["passage"]
-        # find distractors from the training index by embedding of this eval question
+        # distractors: topically similar, distinct doc + distinct text from the golden
         q_emb = r.get("_emb")
-        if q_emb is not None:
-            sims = emb @ q_emb;
-            dd = [j for j in np.argsort(-sims) if golden[j]["doc_id"] != r["doc_id"]][:C.RAFT_K]
-        else:
-            dd = list(range(C.RAFT_K))
+        order = np.argsort(-(emb @ q_emb)) if q_emb is not None else np.arange(len(golden))
+        dd = _distinct_take(order, golden, C.RAFT_K, r["doc_id"], {norm(gp)})
         dtexts = [golden[j]["passage"] for j in dd]
-        def ctx_of(docs):
-            return "\n\n".join(f"[Document {d+1}]\n{t}" for d, t in enumerate(docs))
         base_meta = {"pair_id": r["chunk_id"], "source": r["source"]}
         # 4 matched conditions
         eval_rows.append(chat(SYS_RAFT, f"{ctx_of([gp])}\n\nQuestion: {r['question']}", r["answer"],
