@@ -303,11 +303,11 @@ the redundant mass).
 
 ```
 system(~45) + question(~30) + (k+1)×doc + answer(quote+final ~90) + margin(~40) ≈ 1024
-→ ~820 tokens for documents → k=2 distractors, ~250-token docs
+→ ~820 tokens for documents → k=2 distractors, ~256-token docs (the §3 `CHUNK_TOKENS`)
 ```
 
 Measured in the 125M tokenizer (least efficient). Gemma's 256k vocab tokenizes the same text
-into fewer tokens, so it fits with headroom. **k=2, ~250-token chunks** — already the §3 chunk
+into fewer tokens, so it fits with headroom. **k=2, 256-token chunks** — already the §3 chunk
 size.
 
 ### 7.2 RAFT distractors — hard, with same-document exclusion

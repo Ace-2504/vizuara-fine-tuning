@@ -27,7 +27,15 @@ thread told to do only one reads the preamble + that track and nothing else.
 ⚠️ **`<|bos|>` and the chat tokens were never trained.** Pretraining used
 `add_special_tokens=False` and appended only `<|eos|>`. So `<|bos|>`'s embedding is at random
 init — **do not prepend it** — and `<|user|>/<|assistant|>/<|system|>` start from noise and
-train during SFT. This model is the native match for `data/tokens/`.
+train during SFT.
+
+⚠️ **Is `data/tokens/` this 125M's actual pretraining data?** `data/tokens/` is the **v2 2.5B**
+corpus, tokenized with the 16k tokenizer. If the 125M you fine-tune was pretrained on this v2
+corpus, `data/tokens/val/` is its native forgetting benchmark. If it is the **v1-trained**
+`slm-125m-base` (trained on the 2.04B v1 corpus), then `data/tokens/val/` is a *same-tokenizer,
+same-domain proxy* — prefer that model's own v1 held-out val set
+(`Replicate-the-125M-SLM-Data-Pipeline/data/tokens/val/`) if available. Confirm which 125M this
+is (the checkpoint is TBD) before treating §P.8's forgetting number as native.
 
 ### P.2 The shared datasets
 
@@ -97,8 +105,9 @@ aggregates; without them you cannot compute intervals or re-analyse. Every numbe
 Fix decoding (`no_repeat_ngram_size=3`, `repetition_penalty≈1.2`) and hold it constant across
 base vs fine-tuned.
 
-**Forgetting:** this model's benchmark is `data/tokens/val/` (same tokenizer). Report per
-source (`sec`, `case-law`, `fineweb-edu`) vs the base — never an aggregate.
+**Forgetting:** use `data/tokens/val/` **if** this 125M was pretrained on the v2 corpus;
+otherwise use its own v1 held-out val (see the P.1 caveat). Either way it is same-tokenizer, so
+report per source (`sec`, `case-law`, `fineweb-edu`) vs the base — never an aggregate.
 
 ### P.9 Local serving — RTX 3060 12GB
 125M is ~250 MB in fp16 — trivial locally.
