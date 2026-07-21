@@ -51,8 +51,8 @@ GEMMA = {
     "lr": 2e-4,
     "min_lr": 2e-5,
     "epochs": 2,
-    "micro_batch": 4,
-    "grad_accum": 4,                      # effective batch 16
+    "micro_batch": 2,                     # 256k vocab x 2048 seq -> logits OOM at 4 on L4
+    "grad_accum": 8,                      # effective batch 16
     "gpu": "L4",
     "max_seq": 2048,                     # general tokenizer needs more tokens here; 8192 native
     "attn_impl": "eager",                # Gemma-2 soft-capping: eager is the safe choice

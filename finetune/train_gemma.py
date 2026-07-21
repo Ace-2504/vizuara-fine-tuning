@@ -19,13 +19,14 @@ image = (
     modal.Image.debian_slim(python_version="3.12")
     .pip_install("torch==2.4.1", "transformers==4.46.3", "accelerate>=0.34",
                  "peft>=0.13", "bitsandbytes>=0.44", "numpy>=1.26,<2.0")
+    .env({"PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"})   # curb fragmentation OOM
     .add_local_python_source("ft_config", "ft_data")
 )
 
 
 @app.function(image=image, gpu=C.GEMMA["gpu"], volumes={"/data": vol},
               secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 6)
-def train(method: str):
+def train(method: str, limit: int = 0, epochs: int = 0):
     import math, os, time
     import torch
     from torch.utils.data import DataLoader
@@ -35,6 +36,7 @@ def train(method: str):
     import ft_data as D
 
     cfg = C.GEMMA
+    n_epochs = epochs or cfg["epochs"]
     assert method in C.DATA
     torch.manual_seed(C.SEED)
     dev = "cuda"
@@ -54,6 +56,8 @@ def train(method: str):
     model.config.use_cache = False
 
     rows = D.load_jsonl(C.DATA[method])
+    if limit:
+        rows = rows[:limit]
     ds = D.ChatDataset(rows, tok, D.render_gemma, cfg["max_seq"])
     print(f"[gemma/{method}] {len(ds)} examples | dropped {ds.dropped} | trunc {ds.trunc}", flush=True)
     pad_id = tok.pad_token_id if tok.pad_token_id is not None else tok.eos_token_id
@@ -61,14 +65,14 @@ def train(method: str):
                     collate_fn=lambda b: D.collate(b, pad_id))
 
     steps_per_epoch = math.ceil(len(dl) / cfg["grad_accum"])
-    total = steps_per_epoch * cfg["epochs"]
+    total = steps_per_epoch * n_epochs
     opt = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=cfg["lr"],
                             weight_decay=C.WEIGHT_DECAY)
     sched = get_cosine_schedule_with_warmup(opt, int(total * C.WARMUP_RATIO), total)
 
     model.train()
     t0 = time.time(); step = 0; accum = 0; running = 0.0
-    for epoch in range(cfg["epochs"]):
+    for epoch in range(n_epochs):
         for batch in dl:
             batch = {k: v.to(dev) for k, v in batch.items()}
             out = model(**batch); loss = out.loss / cfg["grad_accum"]
@@ -93,5 +97,5 @@ def train(method: str):
 
 
 @app.local_entrypoint()
-def main(method: str = "sft"):
-    print(train.remote(method))
+def main(method: str = "sft", limit: int = 0, epochs: int = 0):
+    print(train.remote(method, limit, epochs))

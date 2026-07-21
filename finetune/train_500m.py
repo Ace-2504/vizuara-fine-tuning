@@ -25,7 +25,7 @@ image = (
 
 @app.function(image=image, gpu=C.M500["gpu"], volumes={"/data": vol},
               secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 4)
-def train(method: str):
+def train(method: str, limit: int = 0, epochs: int = 0):
     import math, os, time
     import torch
     from torch.utils.data import DataLoader
@@ -33,6 +33,7 @@ def train(method: str):
     import ft_data as D
 
     cfg = C.M500
+    n_epochs = epochs or cfg["epochs"]     # smoke tests pass epochs=1
     assert method in C.DATA, f"method must be sft|raft, got {method}"
     torch.manual_seed(C.SEED)
     dev = "cuda"
@@ -47,20 +48,22 @@ def train(method: str):
     pad_id = tok.convert_tokens_to_ids("<|pad|>")
 
     rows = D.load_jsonl(C.DATA[method])
+    if limit:
+        rows = rows[:limit]
     ds = D.ChatDataset(rows, tok, D.render_custom, cfg["max_seq"])
     print(f"[500m/{method}] {len(ds)} examples | dropped {ds.dropped} | trunc {ds.trunc}", flush=True)
     dl = DataLoader(ds, batch_size=cfg["micro_batch"], shuffle=True,
                     collate_fn=lambda b: D.collate(b, pad_id))
 
     steps_per_epoch = math.ceil(len(dl) / cfg["grad_accum"])
-    total = steps_per_epoch * cfg["epochs"]
+    total = steps_per_epoch * n_epochs
     opt = torch.optim.AdamW(model.parameters(), lr=cfg["lr"], weight_decay=C.WEIGHT_DECAY,
                             betas=(0.9, 0.95))
     sched = get_cosine_schedule_with_warmup(opt, int(total * C.WARMUP_RATIO), total)
 
     model.train()
     t0 = time.time(); step = 0; accum = 0; running = 0.0
-    for epoch in range(cfg["epochs"]):
+    for epoch in range(n_epochs):
         for batch in dl:
             batch = {k: v.to(dev) for k, v in batch.items()}
             with torch.autocast("cuda", dtype=torch.bfloat16):
@@ -84,5 +87,5 @@ def train(method: str):
 
 
 @app.local_entrypoint()
-def main(method: str = "sft"):
-    print(train.remote(method))
+def main(method: str = "sft", limit: int = 0, epochs: int = 0):
+    print(train.remote(method, limit, epochs))
