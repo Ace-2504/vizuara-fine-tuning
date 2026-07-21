@@ -35,8 +35,8 @@ M500 = {
     "lr": 2e-5,
     "min_lr": 2e-6,
     "epochs": 3,
-    "micro_batch": 8,
-    "grad_accum": 2,                      # effective batch 16
+    "micro_batch": 4,                     # full-FT + long RAFT seqs OOM'd at 8 on L4 (frag)
+    "grad_accum": 4,                      # effective batch 16 (unchanged -> still comparable)
     "gpu": "L4",
     "max_seq": 1024,                      # its context ceiling
     "bos": False,                         # <|bos|> untrained -> never prepend

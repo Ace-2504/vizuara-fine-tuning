@@ -18,7 +18,8 @@ image = (
     modal.Image.debian_slim(python_version="3.12")
     .pip_install("torch==2.4.1", "transformers==4.46.3", "accelerate>=0.34",
                  "numpy>=1.26,<2.0")
-    .env({"HF_HUB_DISABLE_IMPLICIT_TOKEN": "1"})     # kill the stale implicit token
+    .env({"HF_HUB_DISABLE_IMPLICIT_TOKEN": "1",       # kill the stale implicit token
+          "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"})   # curb fragmentation OOM
     .add_local_python_source("ft_config", "ft_data")
 )
 
