@@ -405,21 +405,22 @@ judging the survivors.
 | Embedding dedup / RAFT index | local, ~$0 (CPU/short GPU) |
 | **Total** | **~40 M tokens** |
 
-**Measured (smoke test, 2026-07-21, gemini-3.1-flash-lite):** ~533 tokens per kept pair
-(generation + judge combined), 100% quote-verified, on clean sample passages. The earlier
-~$20–30 estimate was ~5× too high — it over-counted tokens and assumed full-flash rates.
+**Measured on a real run (2026-07-21, gemini-3.1-flash-lite).** A $5 balance was consumed by
+generation, producing ~33k raw pairs (~5M tokens). That fixes the real price at **≈ $1 per 1M
+tokens blended** — far above the $0.10/$0.40 rates I assumed from the smoke test. Token counts
+were right; the *rates* were wrong. The original ~$20–30 estimate was correct after all.
 
-**Revised estimate** (assumed lite rates $0.10 in / $0.40 out — **verify current pricing**):
-
-| Keep rate | Effective $/kept pair | 25,000 kept pairs |
+| Stage | Tokens | Cost @ ~$1/1M |
 | --- | --- | --- |
-| 100% (smoke, unrealistic) | ~$0.00009 | ~$2.3 |
-| **~55% (realistic, after dedup+judge)** | ~$0.00016 | **~$4** |
-| + Evol / summarize / extract / rewrite / abstention overhead (~1.3×) | | **~$5–6** |
+| Generation (~46k raw pairs) | ~13M | ~$13 |
+| LLM-judge (~30k survivors) | ~15M | ~$15 |
+| **Full build (gen + judge)** | ~28M | **≈ $25–30** |
+| Generation only (no judge) | ~13M | **≈ $10–13** |
 
-> **≈ $5 – $6 total, one-time, shared across all three models** (single-digit even at 2–3× the
-> assumed rate). Comfortably near a $5 balance; at most one small top-up. Keep the full judge —
-> it is the correctness guarantee and costs cents.
+> **Verify current Gemini 3.1 Flash-Lite pricing in your billing console** — but budget **~$25–30**
+> for the full judged build, not $5. A $5 balance yields generation-only (grounding + quote-verify
+> + dedup, no correctness judge). The judge is the biggest single cost *and* the correctness
+> guarantee — top up for it if quality matters.
 
 ---
 

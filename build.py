@@ -54,10 +54,13 @@ def rule_ok(r: dict) -> bool:
     if not (C.MIN_ANSWER_CHARS <= len(a) <= C.MAX_ANSWER_CHARS):
         return False
     low = norm(q) + " " + norm(a)
-    if any(p in low for p in ("the passage", "the text", "the document", "as stated above",
-                              "here are", "provided text")):
+    if "here are" in low:                       # template echo — drop for any task
         return False
     if r["task"] == "qa":
+        # Self-reference is only wrong for QA (a closed-book answer must stand alone).
+        # Aux tasks carry the passage in the prompt, so "the document ..." is fine.
+        if any(p in low for p in ("the passage", "the text", "the document", "as stated above")):
+            return False
         if not r.get("quote") or norm(r["quote"]) not in norm(r["passage"]):
             return False
         if token_len(r["quote"]) > C.MAX_QUOTE_TOKENS:
@@ -67,7 +70,10 @@ def rule_ok(r: dict) -> bool:
 
 # ---------------- stage 2: grounding ----------------
 def grounded_ok(r: dict) -> bool:
-    if r["task"] == "unanswerable":
+    # Only extractive QA answers must overlap the passage. Summaries/rewrites are
+    # legitimately paraphrastic; extraction is JSON. Applying the overlap test to them
+    # wrongly deletes faithful examples.
+    if r["task"] != "qa":
         return True
     if r["answer"].strip() == C.ABSTAIN_STRING:
         return True
@@ -79,10 +85,18 @@ def grounded_ok(r: dict) -> bool:
 
 
 # ---------------- stage 3: dedup ----------------
+def _dedup_text(r: dict) -> str:
+    # Aux instructions are boilerplate ("Summarize the following text"); dedup them by
+    # their ANSWER, which varies per passage. QA/unanswerable dedup by question.
+    if r["task"] in ("summarize", "extract", "rewrite"):
+        return r["answer"]
+    return r["question"]
+
+
 def dedup(rows: list[dict]) -> list[dict]:
     seen, out = set(), []
-    for r in rows:                              # exact question hash
-        h = hashlib.sha256(norm(r["question"]).encode()).hexdigest()
+    for r in rows:                              # exact hash of the per-task signature
+        h = hashlib.sha256(norm(_dedup_text(r)).encode()).hexdigest()
         if h in seen:
             continue
         seen.add(h); out.append(r)
@@ -91,9 +105,9 @@ def dedup(rows: list[dict]) -> list[dict]:
     from sentence_transformers import SentenceTransformer
     import torch
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"  embedding {len(out)} questions on {dev} ...")
+    print(f"  embedding {len(out)} signatures on {dev} ...")
     emb = SentenceTransformer(C.EMBED_MODEL, device=dev).encode(
-        [r["question"] for r in out], normalize_embeddings=True, batch_size=256,
+        [_dedup_text(r) for r in out], normalize_embeddings=True, batch_size=256,
         show_progress_bar=False).astype(np.float32)
     keep, kept_idx = [], []
     for i in range(len(out)):
@@ -171,15 +185,19 @@ def keep_by_judge(r: dict, cache: dict) -> bool:
 
 # ---------------- stage 5: eval holdout ----------------
 def carve_eval(pool: list[dict]) -> tuple[list[dict], set]:
+    """Hold out EVAL_SIZE qa pairs, one per chunk, and quarantine those CHUNKS from
+    training (the eval passage itself is never trained on). Chunk-level (not doc-level)
+    keeps collateral small on a corpus with many chunks per document; sibling chunks are
+    different 256-token windows, so they are acceptable training data."""
     qa = [r for r in pool if r["task"] == "qa"]
     RNG.shuffle(qa)
     picked, quar = [], set()
     for r in qa:
         if len(picked) >= C.EVAL_SIZE:
             break
-        if r["doc_id"] in quar:
+        if r["chunk_id"] in quar:
             continue
-        picked.append(r); quar.add(r["doc_id"])
+        picked.append(r); quar.add(r["chunk_id"])
     return picked, quar
 
 
@@ -208,21 +226,47 @@ def chat(system, user, assistant, meta):
                          {"role": "assistant", "content": assistant}], "meta": meta}
 
 
+def load_raw():
+    """Robust: skip torn/blank lines from concurrent writes at a budget-kill."""
+    raw, bad = [], 0
+    for l in open(C.RAW, encoding="utf-8"):
+        l = l.strip()
+        if not l:
+            continue
+        try:
+            raw.append(json.loads(l))
+        except Exception:
+            bad += 1
+    if bad:
+        print(f"  (skipped {bad} torn/blank lines)")
+    return raw
+
+
 def main():
-    raw = [json.loads(l) for l in open(C.RAW, encoding="utf-8")]
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--no-judge", action="store_true",
+                    help="skip the LLM correctness gate (grounding+dedup+quote-verify only)")
+    args = ap.parse_args()
+
+    raw = load_raw()
     print(f"raw pairs: {len(raw)}")
     r1 = [r for r in raw if rule_ok(r)]
     print(f"after rule filters: {len(r1)}")
     r2 = [r for r in r1 if grounded_ok(r)]
     print(f"after grounding: {len(r2)}")
     r3 = dedup(r2)
-    cache = judge_all(r3)
-    r4 = [r for r in r3 if keep_by_judge(r, cache)]
-    print(f"after judge (>= {C.JUDGE_KEEP_CORRECT} & grounded): {len(r4)}")
+    if args.no_judge:
+        print("  [--no-judge] skipping LLM correctness gate")
+        r4 = r3
+    else:
+        cache = judge_all(r3)
+        r4 = [r for r in r3 if keep_by_judge(r, cache)]
+        print(f"after judge (>= {C.JUDGE_KEEP_CORRECT} & grounded): {len(r4)}")
 
     eval_pool, quar = carve_eval([r for r in r4 if r["task"] == "qa"])
-    train = [r for r in r4 if r["doc_id"] not in quar]
-    print(f"eval held out: {len(eval_pool)} ({len(quar)} docs quarantined) | train pool: {len(train)}")
+    train = [r for r in r4 if r["chunk_id"] not in quar]
+    print(f"eval held out: {len(eval_pool)} ({len(quar)} chunks quarantined) | train pool: {len(train)}")
 
     # ---- QA-SFT set ----
     qa_sft = []
