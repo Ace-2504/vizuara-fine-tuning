@@ -1,0 +1,198 @@
+{
+  "pairs": [
+    {
+      "src": "sec",
+      "passage": "Cummins Engine Company, Inc. (\"Cummins\" or \"the Company\") is a leading worldwide designer and manufacturer of fuel-efficient diesel engines and related products. Engines ranging from 76 to 2,000 horsepower serve a wide variety of equipment in Cummins' key markets: heavy-duty truck, midrange truck, power generation, bus and light commercial vehicles, industrial products, government and marine. In addition, Cummins produces strategic components and subsystems critical to the engine, including filters, turbochargers and electronic control systems. Cummins sells its products to original equipment manufacturers (\"OEMs\"), distributors and other customers worldwide and conducts manufacturing, sales, distribution and service activities in most areas of the world. In 1993, approximately 56 percent of net sales were made in the United States. Major international markets include the United Kingdom and Europe (14 percent of net sales); Asia, the Far East and Australia (13 percent of net sales); and Mexico and South America (8 percent of net sales). Cummins' growing presence in international markets and its significant investment in emissions technology have created opportunities for cooperative arrangements with vertically integrated manufacturers worldwide. In addition to agreements with major US equipment",
+      "q": "What is the primary business of Cummins Engine Company, Inc.?",
+      "quote": "Cummins Engine Company, Inc. (\"Cummins\" or \"the Company\") is a leading worldwide designer and manufacturer of fuel-efficient diesel engines and related products.",
+      "a": "Designer and manufacturer of fuel-efficient diesel engines and related products.",
+      "quote_ok": true,
+      "difficulty": "easy",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "sec",
+      "passage": "Cummins Engine Company, Inc. (\"Cummins\" or \"the Company\") is a leading worldwide designer and manufacturer of fuel-efficient diesel engines and related products. Engines ranging from 76 to 2,000 horsepower serve a wide variety of equipment in Cummins' key markets: heavy-duty truck, midrange truck, power generation, bus and light commercial vehicles, industrial products, government and marine. In addition, Cummins produces strategic components and subsystems critical to the engine, including filters, turbochargers and electronic control systems. Cummins sells its products to original equipment manufacturers (\"OEMs\"), distributors and other customers worldwide and conducts manufacturing, sales, distribution and service activities in most areas of the world. In 1993, approximately 56 percent of net sales were made in the United States. Major international markets include the United Kingdom and Europe (14 percent of net sales); Asia, the Far East and Australia (13 percent of net sales); and Mexico and South America (8 percent of net sales). Cummins' growing presence in international markets and its significant investment in emissions technology have created opportunities for cooperative arrangements with vertically integrated manufacturers worldwide. In addition to agreements with major US equipment",
+      "q": "What is the horsepower range of engines manufactured by Cummins?",
+      "quote": "Engines ranging from 76 to 2,000 horsepower serve a wide variety of equipment",
+      "a": "76 to 2,000 horsepower.",
+      "quote_ok": true,
+      "difficulty": "easy",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "sec",
+      "passage": "Cummins Engine Company, Inc. (\"Cummins\" or \"the Company\") is a leading worldwide designer and manufacturer of fuel-efficient diesel engines and related products. Engines ranging from 76 to 2,000 horsepower serve a wide variety of equipment in Cummins' key markets: heavy-duty truck, midrange truck, power generation, bus and light commercial vehicles, industrial products, government and marine. In addition, Cummins produces strategic components and subsystems critical to the engine, including filters, turbochargers and electronic control systems. Cummins sells its products to original equipment manufacturers (\"OEMs\"), distributors and other customers worldwide and conducts manufacturing, sales, distribution and service activities in most areas of the world. In 1993, approximately 56 percent of net sales were made in the United States. Major international markets include the United Kingdom and Europe (14 percent of net sales); Asia, the Far East and Australia (13 percent of net sales); and Mexico and South America (8 percent of net sales). Cummins' growing presence in international markets and its significant investment in emissions technology have created opportunities for cooperative arrangements with vertically integrated manufacturers worldwide. In addition to agreements with major US equipment",
+      "q": "Which specific components does Cummins produce for engines?",
+      "quote": "Cummins produces strategic components and subsystems critical to the engine, including filters, turbochargers and electronic control systems.",
+      "a": "Filters, turbochargers, and electronic control systems.",
+      "quote_ok": true,
+      "difficulty": "medium",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "sec",
+      "passage": "Cummins Engine Company, Inc. (\"Cummins\" or \"the Company\") is a leading worldwide designer and manufacturer of fuel-efficient diesel engines and related products. Engines ranging from 76 to 2,000 horsepower serve a wide variety of equipment in Cummins' key markets: heavy-duty truck, midrange truck, power generation, bus and light commercial vehicles, industrial products, government and marine. In addition, Cummins produces strategic components and subsystems critical to the engine, including filters, turbochargers and electronic control systems. Cummins sells its products to original equipment manufacturers (\"OEMs\"), distributors and other customers worldwide and conducts manufacturing, sales, distribution and service activities in most areas of the world. In 1993, approximately 56 percent of net sales were made in the United States. Major international markets include the United Kingdom and Europe (14 percent of net sales); Asia, the Far East and Australia (13 percent of net sales); and Mexico and South America (8 percent of net sales). Cummins' growing presence in international markets and its significant investment in emissions technology have created opportunities for cooperative arrangements with vertically integrated manufacturers worldwide. In addition to agreements with major US equipment",
+      "q": "What percentage of Cummins' net sales originated from the United States in 1993?",
+      "quote": "In 1993, approximately 56 percent of net sales were made in the United States.",
+      "a": "Approximately 56 percent.",
+      "quote_ok": true,
+      "difficulty": "easy",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "sec",
+      "passage": "Cummins Engine Company, Inc. (\"Cummins\" or \"the Company\") is a leading worldwide designer and manufacturer of fuel-efficient diesel engines and related products. Engines ranging from 76 to 2,000 horsepower serve a wide variety of equipment in Cummins' key markets: heavy-duty truck, midrange truck, power generation, bus and light commercial vehicles, industrial products, government and marine. In addition, Cummins produces strategic components and subsystems critical to the engine, including filters, turbochargers and electronic control systems. Cummins sells its products to original equipment manufacturers (\"OEMs\"), distributors and other customers worldwide and conducts manufacturing, sales, distribution and service activities in most areas of the world. In 1993, approximately 56 percent of net sales were made in the United States. Major international markets include the United Kingdom and Europe (14 percent of net sales); Asia, the Far East and Australia (13 percent of net sales); and Mexico and South America (8 percent of net sales). Cummins' growing presence in international markets and its significant investment in emissions technology have created opportunities for cooperative arrangements with vertically integrated manufacturers worldwide. In addition to agreements with major US equipment",
+      "q": "Which factors have enabled Cummins to pursue cooperative arrangements with vertically integrated manufacturers globally?",
+      "quote": "Cummins' growing presence in international markets and its significant investment in emissions technology have created opportunities for cooperative arrangements with vertically integrated manufacturers worldwide.",
+      "a": "Its growing international presence and significant investment in emissions technology.",
+      "quote_ok": true,
+      "difficulty": "hard",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "case-law",
+      "passage": "The petition filed in this Court by the Mobile County Probate Judge on February 9, 2015, in substance is a request for an advisory opinion. Section 12-2-10, Ala. Code 1975, authorizes this Court to address requests for advisory opinions fron only the Governor or the Legislature. See opinion of the Justices No, 199, 286 Ala. 156, 158, 238 So. 2d 326, 327 (1970). Because this Court is not authorized to address this petition, the petition is dismissed, Bolin, Murdock, and Shaw, JJ., concur specially. hherowith set out as same appear(s) of recordin aid \u201cWhat has been an orderly process, I suspect, will soon resemble a three-ring circus.\" Tyson v. Macon Cnty, Greyhound dissenting). Admittedly this quotation is taken out of context. From the perspective of a probate judge in Alabama, however, the events that have unfolded subsequent to the issuance of the memorandum opinion and order by United States District Judge Callie S$. Granade, in the United states District Court for the Southern District of Alabama, Southern Division, in Civil Action No. 14-0208-cG-N sure",
+      "q": "On what date was the petition filed by the Mobile County Probate Judge?",
+      "quote": "The petition filed in this Court by the Mobile County Probate Judge on February 9, 2015",
+      "a": "February 9, 2015",
+      "quote_ok": true,
+      "difficulty": "easy",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "case-law",
+      "passage": "The petition filed in this Court by the Mobile County Probate Judge on February 9, 2015, in substance is a request for an advisory opinion. Section 12-2-10, Ala. Code 1975, authorizes this Court to address requests for advisory opinions fron only the Governor or the Legislature. See opinion of the Justices No, 199, 286 Ala. 156, 158, 238 So. 2d 326, 327 (1970). Because this Court is not authorized to address this petition, the petition is dismissed, Bolin, Murdock, and Shaw, JJ., concur specially. hherowith set out as same appear(s) of recordin aid \u201cWhat has been an orderly process, I suspect, will soon resemble a three-ring circus.\" Tyson v. Macon Cnty, Greyhound dissenting). Admittedly this quotation is taken out of context. From the perspective of a probate judge in Alabama, however, the events that have unfolded subsequent to the issuance of the memorandum opinion and order by United States District Judge Callie S$. Granade, in the United states District Court for the Southern District of Alabama, Southern Division, in Civil Action No. 14-0208-cG-N sure",
+      "q": "Which government officials are authorized to request an advisory opinion from the Court under Section 12-2-10, Ala. Code 1975?",
+      "quote": "Section 12-2-10, Ala. Code 1975, authorizes this Court to address requests for advisory opinions fron only the Governor or the Legislature.",
+      "a": "The Governor or the Legislature",
+      "quote_ok": true,
+      "difficulty": "medium",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "case-law",
+      "passage": "The petition filed in this Court by the Mobile County Probate Judge on February 9, 2015, in substance is a request for an advisory opinion. Section 12-2-10, Ala. Code 1975, authorizes this Court to address requests for advisory opinions fron only the Governor or the Legislature. See opinion of the Justices No, 199, 286 Ala. 156, 158, 238 So. 2d 326, 327 (1970). Because this Court is not authorized to address this petition, the petition is dismissed, Bolin, Murdock, and Shaw, JJ., concur specially. hherowith set out as same appear(s) of recordin aid \u201cWhat has been an orderly process, I suspect, will soon resemble a three-ring circus.\" Tyson v. Macon Cnty, Greyhound dissenting). Admittedly this quotation is taken out of context. From the perspective of a probate judge in Alabama, however, the events that have unfolded subsequent to the issuance of the memorandum opinion and order by United States District Judge Callie S$. Granade, in the United states District Court for the Southern District of Alabama, Southern Division, in Civil Action No. 14-0208-cG-N sure",
+      "q": "What is the final decision made by the Court regarding the petition filed by the Mobile County Probate Judge?",
+      "quote": "Because this Court is not authorized to address this petition, the petition is dismissed",
+      "a": "The petition was dismissed",
+      "quote_ok": true,
+      "difficulty": "easy",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "case-law",
+      "passage": "The petition filed in this Court by the Mobile County Probate Judge on February 9, 2015, in substance is a request for an advisory opinion. Section 12-2-10, Ala. Code 1975, authorizes this Court to address requests for advisory opinions fron only the Governor or the Legislature. See opinion of the Justices No, 199, 286 Ala. 156, 158, 238 So. 2d 326, 327 (1970). Because this Court is not authorized to address this petition, the petition is dismissed, Bolin, Murdock, and Shaw, JJ., concur specially. hherowith set out as same appear(s) of recordin aid \u201cWhat has been an orderly process, I suspect, will soon resemble a three-ring circus.\" Tyson v. Macon Cnty, Greyhound dissenting). Admittedly this quotation is taken out of context. From the perspective of a probate judge in Alabama, however, the events that have unfolded subsequent to the issuance of the memorandum opinion and order by United States District Judge Callie S$. Granade, in the United states District Court for the Southern District of Alabama, Southern Division, in Civil Action No. 14-0208-cG-N sure",
+      "q": "Which judge issued the memorandum opinion and order mentioned in the context of the events involving the probate judge?",
+      "quote": "the memorandum opinion and order by United States District Judge Callie S$. Granade",
+      "a": "United States District Judge Callie S. Granade",
+      "quote_ok": true,
+      "difficulty": "medium",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "case-law",
+      "passage": "The petition filed in this Court by the Mobile County Probate Judge on February 9, 2015, in substance is a request for an advisory opinion. Section 12-2-10, Ala. Code 1975, authorizes this Court to address requests for advisory opinions fron only the Governor or the Legislature. See opinion of the Justices No, 199, 286 Ala. 156, 158, 238 So. 2d 326, 327 (1970). Because this Court is not authorized to address this petition, the petition is dismissed, Bolin, Murdock, and Shaw, JJ., concur specially. hherowith set out as same appear(s) of recordin aid \u201cWhat has been an orderly process, I suspect, will soon resemble a three-ring circus.\" Tyson v. Macon Cnty, Greyhound dissenting). Admittedly this quotation is taken out of context. From the perspective of a probate judge in Alabama, however, the events that have unfolded subsequent to the issuance of the memorandum opinion and order by United States District Judge Callie S$. Granade, in the United states District Court for the Southern District of Alabama, Southern Division, in Civil Action No. 14-0208-cG-N sure",
+      "q": "Which justices concurred specially with the dismissal of the petition?",
+      "quote": "Bolin, Murdock, and Shaw, JJ., concur specially.",
+      "a": "Bolin, Murdock, and Shaw",
+      "quote_ok": true,
+      "difficulty": "hard",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "fineweb-edu",
+      "passage": "For all the love, romance and scandal in Jane Austen\u2019s books, what they are really about is freedom and independence. Independence of thought and the freedom to choose. Elizabeth\u2019s refusal of Mr. Collins offer of marriage showed an independence seldom seen in heroines of the day. Her refusal of Mr. Darcy while triggered by anger showed a level of independence that left him shocked and stunned. The freedom she exhibited in finally accepting him in direct defiance of Lady Catherine and knowing her father would disapprove was unusual even for Austen. In her last book Anne Elliot is persuaded to refuse Captain Wentworth at Lady Russel\u2019s insistence. Although Jane played by the rules of the day, all of her writing is infused with how she wanted life to be. She \u2018screams\u2019 her outrage at the limitations for women in Emma. When accosted by Mrs. Elton, Jane Fairfax says, \u201cExcuse me, ma\u2019am, but this is by no means my intention; I make no inquiry myself, and should be sorry to have any made by my friends. When I am",
+      "q": "What is the central theme that underpins Jane Austen\u2019s novels?",
+      "quote": "what they are really about is freedom and independence.",
+      "a": "Freedom and independence",
+      "quote_ok": true,
+      "difficulty": "easy",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "fineweb-edu",
+      "passage": "For all the love, romance and scandal in Jane Austen\u2019s books, what they are really about is freedom and independence. Independence of thought and the freedom to choose. Elizabeth\u2019s refusal of Mr. Collins offer of marriage showed an independence seldom seen in heroines of the day. Her refusal of Mr. Darcy while triggered by anger showed a level of independence that left him shocked and stunned. The freedom she exhibited in finally accepting him in direct defiance of Lady Catherine and knowing her father would disapprove was unusual even for Austen. In her last book Anne Elliot is persuaded to refuse Captain Wentworth at Lady Russel\u2019s insistence. Although Jane played by the rules of the day, all of her writing is infused with how she wanted life to be. She \u2018screams\u2019 her outrage at the limitations for women in Emma. When accosted by Mrs. Elton, Jane Fairfax says, \u201cExcuse me, ma\u2019am, but this is by no means my intention; I make no inquiry myself, and should be sorry to have any made by my friends. When I am",
+      "q": "How did Mr. Darcy react to Elizabeth\u2019s rejection of his proposal?",
+      "quote": "Her refusal of Mr. Darcy while triggered by anger showed a level of independence that left him shocked and stunned.",
+      "a": "He was shocked and stunned",
+      "quote_ok": true,
+      "difficulty": "medium",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "fineweb-edu",
+      "passage": "For all the love, romance and scandal in Jane Austen\u2019s books, what they are really about is freedom and independence. Independence of thought and the freedom to choose. Elizabeth\u2019s refusal of Mr. Collins offer of marriage showed an independence seldom seen in heroines of the day. Her refusal of Mr. Darcy while triggered by anger showed a level of independence that left him shocked and stunned. The freedom she exhibited in finally accepting him in direct defiance of Lady Catherine and knowing her father would disapprove was unusual even for Austen. In her last book Anne Elliot is persuaded to refuse Captain Wentworth at Lady Russel\u2019s insistence. Although Jane played by the rules of the day, all of her writing is infused with how she wanted life to be. She \u2018screams\u2019 her outrage at the limitations for women in Emma. When accosted by Mrs. Elton, Jane Fairfax says, \u201cExcuse me, ma\u2019am, but this is by no means my intention; I make no inquiry myself, and should be sorry to have any made by my friends. When I am",
+      "q": "What circumstances made Elizabeth\u2019s ultimate acceptance of Mr. Darcy considered unusual?",
+      "quote": "The freedom she exhibited in finally accepting him in direct defiance of Lady Catherine and knowing her father would disapprove was unusual even for Austen.",
+      "a": "She accepted him in defiance of Lady Catherine and knowing her father would disapprove",
+      "quote_ok": true,
+      "difficulty": "hard",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "fineweb-edu",
+      "passage": "For all the love, romance and scandal in Jane Austen\u2019s books, what they are really about is freedom and independence. Independence of thought and the freedom to choose. Elizabeth\u2019s refusal of Mr. Collins offer of marriage showed an independence seldom seen in heroines of the day. Her refusal of Mr. Darcy while triggered by anger showed a level of independence that left him shocked and stunned. The freedom she exhibited in finally accepting him in direct defiance of Lady Catherine and knowing her father would disapprove was unusual even for Austen. In her last book Anne Elliot is persuaded to refuse Captain Wentworth at Lady Russel\u2019s insistence. Although Jane played by the rules of the day, all of her writing is infused with how she wanted life to be. She \u2018screams\u2019 her outrage at the limitations for women in Emma. When accosted by Mrs. Elton, Jane Fairfax says, \u201cExcuse me, ma\u2019am, but this is by no means my intention; I make no inquiry myself, and should be sorry to have any made by my friends. When I am",
+      "q": "Who persuaded Anne Elliot to turn down Captain Wentworth?",
+      "quote": "In her last book Anne Elliot is persuaded to refuse Captain Wentworth at Lady Russel\u2019s insistence.",
+      "a": "Lady Russell",
+      "quote_ok": true,
+      "difficulty": "medium",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    },
+    {
+      "src": "fineweb-edu",
+      "passage": "For all the love, romance and scandal in Jane Austen\u2019s books, what they are really about is freedom and independence. Independence of thought and the freedom to choose. Elizabeth\u2019s refusal of Mr. Collins offer of marriage showed an independence seldom seen in heroines of the day. Her refusal of Mr. Darcy while triggered by anger showed a level of independence that left him shocked and stunned. The freedom she exhibited in finally accepting him in direct defiance of Lady Catherine and knowing her father would disapprove was unusual even for Austen. In her last book Anne Elliot is persuaded to refuse Captain Wentworth at Lady Russel\u2019s insistence. Although Jane played by the rules of the day, all of her writing is infused with how she wanted life to be. She \u2018screams\u2019 her outrage at the limitations for women in Emma. When accosted by Mrs. Elton, Jane Fairfax says, \u201cExcuse me, ma\u2019am, but this is by no means my intention; I make no inquiry myself, and should be sorry to have any made by my friends. When I am",
+      "q": "In which novel does Jane Austen express her outrage at the constraints placed upon women?",
+      "quote": "She \u2018screams\u2019 her outrage at the limitations for women in Emma.",
+      "a": "Emma",
+      "quote_ok": true,
+      "difficulty": "easy",
+      "correct": 5,
+      "grounded": true,
+      "keep": true
+    }
+  ],
+  "usage": {
+    "requests": 18,
+    "in_tokens": 6116,
+    "out_tokens": 1884,
+    "retries": 0,
+    "by_model": {
+      "gemini-3.1-flash-lite": {
+        "req": 18,
+        "in": 6116,
+        "out": 1884
+      }
+    }
+  },
+  "cost_assumed": 0.0013652
+}

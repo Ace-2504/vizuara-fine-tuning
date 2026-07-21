@@ -69,9 +69,15 @@ distractor exclusion (§7.2).
 # pip install google-genai
 from google import genai
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])   # .env, gitignored
-GEN_MODEL   = "gemini-3.1-flash"      # generation
-JUDGE_MODEL = "gemini-3.1-flash"      # LLM-as-judge (§6.4). A stronger model may be used here.
+GEN_MODEL   = "gemini-3.1-flash-lite"   # generation
+JUDGE_MODEL = "gemini-3.1-flash-lite"   # LLM-as-judge (§6.4)
 ```
+
+⚠️ **`gemini-3.1-flash` (full) returns 404 on this key** — confirmed by smoke test 2026-07-21;
+it is not available to this project. **`gemini-3.1-flash-lite` is verified working** (18/18
+calls, 0 retries) and is the teacher here. `teacher.py` tries full flash first and auto-falls
+back to lite, so either works, but expect lite in practice. Grounded QA needs no more capability
+(the website says as much).
 
 **Robustness — a multi-hour run must survive any single bad response:**
 
@@ -399,13 +405,21 @@ judging the survivors.
 | Embedding dedup / RAFT index | local, ~$0 (CPU/short GPU) |
 | **Total** | **~40 M tokens** |
 
-At Gemini 3.1 Flash rates (blended ~$0.40–0.70 / 1M tokens — **verify current pricing**):
+**Measured (smoke test, 2026-07-21, gemini-3.1-flash-lite):** ~533 tokens per kept pair
+(generation + judge combined), 100% quote-verified, on clean sample passages. The earlier
+~$20–30 estimate was ~5× too high — it over-counted tokens and assumed full-flash rates.
 
-> **≈ $20 – $30 total, one-time, shared across all three models.**
+**Revised estimate** (assumed lite rates $0.10 in / $0.40 out — **verify current pricing**):
 
-The judge is ~55% of the cost; dropping it to a 20% spot-audit would roughly halve the total,
-at the price of your explicit correctness guarantee. I recommend keeping the full judge — $25
-of teacher spend is trivial against the value of a verified-correct training set.
+| Keep rate | Effective $/kept pair | 25,000 kept pairs |
+| --- | --- | --- |
+| 100% (smoke, unrealistic) | ~$0.00009 | ~$2.3 |
+| **~55% (realistic, after dedup+judge)** | ~$0.00016 | **~$4** |
+| + Evol / summarize / extract / rewrite / abstention overhead (~1.3×) | | **~$5–6** |
+
+> **≈ $5 – $6 total, one-time, shared across all three models** (single-digit even at 2–3× the
+> assumed rate). Comfortably near a $5 balance; at most one small top-up. Keep the full judge —
+> it is the correctness guarantee and costs cents.
 
 ---
 
