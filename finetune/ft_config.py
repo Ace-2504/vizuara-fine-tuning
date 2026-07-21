@@ -16,7 +16,10 @@ DATA = {
     "raft": "/data/sft/raft.jsonl",
 }
 EVAL = "/data/sft/eval.jsonl"
-MAX_SEQ_LEN = 1024
+# Per-model max sequence length. The 500M's tokenizer was trained ON this corpus so it packs
+# legal text efficiently (RAFT max ~936 -> fits 1024). Gemma's general 256k tokenizer needs
+# MORE tokens for this domain (+ chat-template turn tokens): RAFT reaches ~1129, so cap higher
+# — its native context is 8192, so 2048 is free and eliminates golden-document truncation.
 
 # --- shared training defaults --------------------------------------------------------
 SEED = 1337
@@ -35,6 +38,7 @@ M500 = {
     "micro_batch": 8,
     "grad_accum": 2,                      # effective batch 16
     "gpu": "L4",
+    "max_seq": 1024,                      # its context ceiling
     "bos": False,                         # <|bos|> untrained -> never prepend
     "eos_token": "<|eos|>",              # config.json points eos at the wrong id; fix explicitly
 }
@@ -50,6 +54,7 @@ GEMMA = {
     "micro_batch": 4,
     "grad_accum": 4,                      # effective batch 16
     "gpu": "L4",
+    "max_seq": 2048,                     # general tokenizer needs more tokens here; 8192 native
     "attn_impl": "eager",                # Gemma-2 soft-capping: eager is the safe choice
     "lora_r": 16,
     "lora_alpha": 32,

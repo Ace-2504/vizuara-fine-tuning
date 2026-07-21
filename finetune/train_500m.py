@@ -47,7 +47,7 @@ def train(method: str):
     pad_id = tok.convert_tokens_to_ids("<|pad|>")
 
     rows = D.load_jsonl(C.DATA[method])
-    ds = D.ChatDataset(rows, tok, D.render_custom, C.MAX_SEQ_LEN)
+    ds = D.ChatDataset(rows, tok, D.render_custom, cfg["max_seq"])
     print(f"[500m/{method}] {len(ds)} examples | dropped {ds.dropped} | trunc {ds.trunc}", flush=True)
     dl = DataLoader(ds, batch_size=cfg["micro_batch"], shuffle=True,
                     collate_fn=lambda b: D.collate(b, pad_id))

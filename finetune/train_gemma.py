@@ -54,7 +54,7 @@ def train(method: str):
     model.config.use_cache = False
 
     rows = D.load_jsonl(C.DATA[method])
-    ds = D.ChatDataset(rows, tok, D.render_gemma, C.MAX_SEQ_LEN)
+    ds = D.ChatDataset(rows, tok, D.render_gemma, cfg["max_seq"])
     print(f"[gemma/{method}] {len(ds)} examples | dropped {ds.dropped} | trunc {ds.trunc}", flush=True)
     pad_id = tok.pad_token_id if tok.pad_token_id is not None else tok.eos_token_id
     dl = DataLoader(ds, batch_size=cfg["micro_batch"], shuffle=True,
