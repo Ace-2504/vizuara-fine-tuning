@@ -12,3 +12,6 @@ reports/
 .venv/
 __pycache__/
 *.pyc
+smoke_result.json
+data/sft/
+gen_run.log
