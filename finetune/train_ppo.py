@@ -31,7 +31,8 @@ KL_COEF = 0.15
 CLIP = 0.2
 PPO_EPOCHS = 2
 ROLLOUT_BS = 16       # 500m; gemma overridden to 4 below
-LR_FULL, LR_LORA = 1e-5, 1e-4
+LR_FULL, LR_LORA = 1e-5, 2e-5          # LoRA 1e-4 let Gemma KL diverge; 2e-5 is stable
+KL_STOP = 40.0                          # early-stop guard if the policy drifts too far
 OUTER = 60                                   # rollout batches
 
 CFG = {
@@ -64,6 +65,7 @@ def _run(model: str, outer: int):
 
     cfg = CFG[model]; n_outer = outer or OUTER
     rollout_bs = ROLLOUT_BS if cfg["mode"] == "full" else 4       # gemma logits are 256k-wide
+    kl_coef = 0.15 if cfg["mode"] == "full" else 0.4              # gemma needs a firmer KL anchor
     torch.manual_seed(C.SEED); dev = "cuda"
     token = os.environ.get("HF_TOKEN")
 
@@ -156,6 +158,9 @@ def _run(model: str, outer: int):
         with torch.no_grad():
             old_lp = logps_of(policy, ids, gm)
             ref_lp = logps_of(ref, ids, gm)
+        kl_now = (old_lp - ref_lp).sum(1).mean().item()
+        if kl_now > KL_STOP:                                       # drifted too far -> stop & keep
+            print(f"  early-stop at iter {it}: KL diverged ({kl_now:.1f})", flush=True); break
         # ---- PPO update epochs ----
         for _ in range(PPO_EPOCHS):
             with torch.autocast("cuda", dtype=torch.bfloat16):
@@ -164,7 +169,7 @@ def _run(model: str, outer: int):
             a = adv.unsqueeze(1)
             pg = -torch.min(ratio * a, torch.clamp(ratio, 1 - CLIP, 1 + CLIP) * a)
             kl = (new_lp - ref_lp)
-            loss = ((pg + KL_COEF * kl) * gm).sum() / gm.sum().clamp(min=1)
+            loss = ((pg + kl_coef * kl) * gm).sum() / gm.sum().clamp(min=1)
             loss.backward(); torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             opt.step(); opt.zero_grad()
         if it % 5 == 0:
