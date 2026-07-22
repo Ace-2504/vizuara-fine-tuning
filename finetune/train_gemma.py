@@ -25,7 +25,7 @@ image = (
 
 
 @app.function(image=image, gpu=C.GEMMA["gpu"], volumes={"/data": vol},
-              secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 6)
+              secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 8)
 def train(method: str, limit: int = 0, epochs: int = 0):
     import math, os, time
     import torch

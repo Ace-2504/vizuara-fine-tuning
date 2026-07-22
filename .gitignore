@@ -15,3 +15,5 @@ __pycache__/
 smoke_result.json
 data/sft/
 gen_run.log
+checkpoints/
+rl/data/

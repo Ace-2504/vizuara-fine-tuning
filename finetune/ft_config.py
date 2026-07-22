@@ -43,6 +43,26 @@ M500 = {
     "eos_token": "<|eos|>",              # config.json points eos at the wrong id; fix explicitly
 }
 
+# --- 125M: full fine-tune ------------------------------------------------------------
+# Base is slm-125m-e4 (a continued-pretraining checkpoint of slm-125m-base, NOT instruction-
+# tuned) — so this is still "init from a base", not from a previous fine-tune. e4 was trained
+# on the v2 2.5B corpus, which makes data/tokens/val its NATIVE forgetting benchmark.
+# Same <|role|> template + no-BOS rule as the 500M -> reuses ft_data.render_custom unchanged.
+M125 = {
+    "name": "slm-125m",
+    "base": "Ace-2504/slm-125m-e4",       # public; continued-pretrain epoch-4 base
+    "mode": "full",
+    "lr": 3e-5,                           # guide P.5 (125M tolerates a touch higher than 500M)
+    "min_lr": 3e-6,
+    "epochs": 3,
+    "micro_batch": 8,                     # 125M is ~250MB fp16 -> mb8 fits easily on L4
+    "grad_accum": 2,                      # effective batch 16 (comparable to 500M/Gemma)
+    "gpu": "L4",
+    "max_seq": 1024,                      # its context ceiling; RAFT must fit here (trunc ~0)
+    "bos": False,                         # <|bos|> untrained -> never prepend
+    "eos_token": "<|eos|>",              # set config eos explicitly (as for the 500M)
+}
+
 # --- Gemma-2-2b-it: QLoRA ------------------------------------------------------------
 GEMMA = {
     "name": "gemma-2-2b",
@@ -51,9 +71,9 @@ GEMMA = {
     "lr": 2e-4,
     "min_lr": 2e-5,
     "epochs": 2,
-    "micro_batch": 2,                     # 256k vocab x 2048 seq -> logits OOM at 4 on L4
-    "grad_accum": 8,                      # effective batch 16
-    "gpu": "L4",
+    "micro_batch": 4,                     # fits on A100-40GB (L4 OOM'd at 4; mb2 on L4 timed out)
+    "grad_accum": 4,                      # effective batch 16 (unchanged -> still comparable)
+    "gpu": "A100-40GB",                   # 40GB holds the 256k-vocab x 2048 logits; ~2x faster
     "max_seq": 2048,                     # general tokenizer needs more tokens here; 8192 native
     "attn_impl": "eager",                # Gemma-2 soft-capping: eager is the safe choice
     "lora_r": 16,
