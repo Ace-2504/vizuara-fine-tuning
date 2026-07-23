@@ -69,6 +69,14 @@ python evaluations/judge_eval.py ./eval_results --set all
 
 # 4) build both experiment reports
 python evaluations/eval_report.py ./eval_results         # -> REPORT.md, comparisons.json
+
+# 5) (optional) calibrate the judge against human labels — do once
+python evaluations/judge_calibration.py emit ./eval_results --n 50 --out calib.csv
+#    ...fill human_correct / human_grounded in calib.csv, then:
+python evaluations/judge_calibration.py score calib.csv
+
+# 6) (optional) sharp head-to-head for the key comparison, position-bias-controlled
+python evaluations/judge_pairwise.py ./eval_results slm-500m-sft-dpo slm-500m-sft-rlaif
 ```
 
 ## Judge cost (so there are no surprises)
@@ -78,13 +86,24 @@ set1 ≈ 6,000 judge calls, set2 ≈ 3,500 — on `gemini-3.1-flash-lite` this i
 and fully resumable. Use `--sample N` (identical first-N pair_ids per condition, so the
 comparison stays paired) to cut cost when iterating.
 
-## Deliberately left for a follow-up
+## Quality-caveat fixes (implemented)
 
-- **Judge calibration against human labels** on a ~50-item slice (report judge–human agreement)
-  — the honest next step before treating judged correctness as ground truth.
-- **Pairwise-with-position-swap** judging for the single most important head-to-head per set
-  (pointwise is used now: cheaper, no position bias, and it feeds the paired bootstrap directly).
+Every caveat from the review now has code behind it:
+
+| Caveat | Fix implemented |
+|---|---|
+| 1 · judge not calibrated | `judge_calibration.py` — emit a 50-item human-labelling sheet, then score exact/within-1/Pearson/kappa agreement (judge vs human). |
+| 2 · pointwise only | `judge_pairwise.py` — direct A-vs-B judging run BOTH orderings; a win counts only if consistent across the swap (position bias surfaced as ties). Bootstrap CI on the net preference. |
+| 4 · token-F1 is a proxy | Report now shows the judge's semantic `matches-ref`, plus a **F1↔judge disagreement** table exposing where lexical scoring misleads. |
+| 5 · closed_book contamination | Relabelled as *parametric recall — contamination-sensitive*, kept out of any grounding headline, and auto-**flagged** when closed_book ≈ clean (likely memorisation). |
+| 6 · reward not cross-family | Reward labelled *within-family only*, a **median-length** column sits beside it (reward models favour length), and it is never a headline; omitted for RLAIF. |
+| 7 · uniform decoding | `--decoding plain\|constrained`; **plain greedy is now the default** (penalties removed), `constrained` kept as a one-command sensitivity ablation. Recorded in the manifest. |
+| 8 · bases score at the floor | Un-tuned custom bases (125M/500M) are now **few-shot** prompted (exemplars from training data, never the eval set) so they show real capability, and are shown as a **floor line excluded from the significance matrix**. (base-gemma is instruction-tuned, so it stays zero-shot.) |
+
+## Still open (honest)
+
+- The calibration **requires you to actually label the 50 items** — the tool is built, the human
+  pass is yours to run. Below ~0.8 within-1 agreement, treat judged numbers cautiously.
+- A **larger/neutral reward model** would remove the family bias entirely; for now reward is a
+  within-family diagnostic only and the judge carries the headline.
 - An **HTML report** like the `slm-125m-eval` site, if you want to publish these.
-- **Decoding sensitivity**: the `repetition_penalty=1.2` / `no_repeat_ngram_size=3` settings are
-  recorded in the manifest now; a one-off ablation would confirm they don't distort short answers
-  differently per tokenizer.

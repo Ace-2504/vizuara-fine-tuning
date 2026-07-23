@@ -26,6 +26,7 @@ image = (
 
 EVAL = "/data/rl/../sft/eval.jsonl"          # /data/sft/eval.jsonl
 EVAL_PATH = "/data/sft/eval.jsonl"
+SFT_PATH = "/data/sft/qa_sft.jsonl"          # TRAINING data — few-shot exemplars for bases
 CKPT = "/data/checkpoints"
 RM = "/data/checkpoints/reward-500m"
 ABSTAIN = "not stated in the context"
@@ -100,7 +101,8 @@ def bootstrap_ci(vals, n=5000, seed=0):
 
 @app.function(image=image, gpu="L4", volumes={"/data": vol},
               secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 2)
-def evaluate(version: str, reward_enabled: bool = True, code_commit: str = ""):
+def evaluate(version: str, reward_enabled: bool = True, code_commit: str = "",
+             decoding: str = "plain", few_shot: int = -1):
     import hashlib, json, os, time
     import torch
     from transformers import (AutoModelForCausalLM, AutoTokenizer,
@@ -156,19 +158,53 @@ def evaluate(version: str, reward_enabled: bool = True, code_commit: str = ""):
              torch_dtype=torch.bfloat16).to(dev).eval()
         rm.config.pad_token_id = rm_tok.convert_tokens_to_ids("<|pad|>")
 
+    # ---- few-shot exemplars for un-tuned BASE models (caveat 8) ----
+    # base-125m / base-500m are continued-pretrain bases, NOT instruction-tuned, so zero-shot
+    # they fail the chat template for FORMAT reasons and score at the floor — which measures
+    # format-following, not capability. Give them k in-context QA exemplars drawn from the
+    # TRAINING data (never the eval set -> no leakage) so the base vs SFT comparison is fair.
+    # (base-gemma = gemma-2-2b-IT is already instruction-tuned, so it stays zero-shot.)
+    # few_shot < 0 => auto: 3 shots for custom bases, 0 otherwise. An explicit value overrides.
+    is_base = version in BASES
+    k_shot = (3 if (is_base and fam == "custom") else 0) if few_shot < 0 else max(0, few_shot)
+    shots = []
+    if k_shot > 0 and fam == "custom" and os.path.exists(SFT_PATH):
+        for line in open(SFT_PATH, encoding="utf-8"):
+            if not line.strip():
+                continue
+            m = json.loads(line).get("messages", [])
+            if len(m) >= 3 and m[1]["role"] == "user" and m[2]["role"] == "assistant":
+                shots.append((m[1]["content"], m[2]["content"]))
+            if len(shots) >= k_shot:
+                break
+
     def render(system, user):
         if fam == "gemma":
             return tok.apply_chat_template([{"role": "user", "content": f"{system}\n\n{user}"}],
                                            tokenize=False, add_generation_prompt=True)
-        return f"<|system|>\n{system}<|eos|>\n<|user|>\n{user}<|eos|>\n<|assistant|>\n"
+        parts = [f"<|system|>\n{system}<|eos|>\n"]
+        for u, a in shots:                      # empty for tuned models -> unchanged zero-shot
+            parts.append(f"<|user|>\n{u}<|eos|>\n<|assistant|>\n{a}<|eos|>\n")
+        parts.append(f"<|user|>\n{user}<|eos|>\n<|assistant|>\n")
+        return "".join(parts)
+
+    # ---- decoding preset (caveat 7) ----
+    # 'plain' (pure greedy) is the primary: repetition_penalty / no_repeat_ngram can clip
+    # legitimately repeated tokens (common in legal/financial phrasing) and interact
+    # differently with each tokenizer, distorting cross-family comparison. 'constrained' keeps
+    # the old aggressive settings so a sensitivity ablation can show they change nothing.
+    DECODINGS = {
+        "plain": dict(do_sample=False),
+        "constrained": dict(do_sample=False, no_repeat_ngram_size=3, repetition_penalty=1.2),
+    }
+    dec_kwargs = DECODINGS.get(decoding, DECODINGS["plain"])
 
     def gen(system, user):
         text = render(system, user)
         ids = tok(text, return_tensors="pt", add_special_tokens=(fam == "gemma")).input_ids.to(dev)
         with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
-            out = model.generate(ids, max_new_tokens=160, do_sample=False, no_repeat_ngram_size=3,
-                                 repetition_penalty=1.2, pad_token_id=tok.pad_token_id or eos,
-                                 eos_token_id=eos, **gk)
+            out = model.generate(ids, max_new_tokens=160, pad_token_id=tok.pad_token_id or eos,
+                                 eos_token_id=eos, **dec_kwargs, **gk)
         return tok.decode(out[0, ids.shape[1]:], skip_special_tokens=True).strip()
 
     def reward(user, resp):
@@ -199,7 +235,8 @@ def evaluate(version: str, reward_enabled: bool = True, code_commit: str = ""):
             resp = gen(system, user)
             s = {"token_f1": token_f1(resp, ref), "exact_match": exact_match(resp, ref),
                  "fabrication": fabrication(resp, user), "abstain": is_abstain(resp),
-                 "false_abstain": false_abstain(resp, answerable), "reward": reward(user, resp)}
+                 "false_abstain": false_abstain(resp, answerable), "reward": reward(user, resp),
+                 "resp_len_words": float(len(resp.split()))}   # caveat 6: length beside reward
             f1s.append(s["token_f1"]); ems.append(s["exact_match"]); fabs.append(s["fabrication"])
             abst.append(s["abstain"]); fabst.append(s["false_abstain"])
             if s["reward"] is not None:
@@ -230,8 +267,8 @@ def evaluate(version: str, reward_enabled: bool = True, code_commit: str = ""):
         "eval_sha256": hashlib.sha256(raw_bytes).hexdigest(),
         "n_eval_items": len(rows),
         "n_per_condition": {c: len(by_cond.get(c, [])) for c in conds},
-        "decoding": {"max_new_tokens": 160, "do_sample": False, "no_repeat_ngram_size": 3,
-                     "repetition_penalty": 1.2, "greedy": True},
+        "decoding": {"preset": decoding, "max_new_tokens": 160, "greedy": True, **dec_kwargs},
+        "few_shot_k": k_shot,
         "model_source": (BASES.get(version) or f"{CKPT}/{version}"),
         "family": fam, "reward_model": (RM if rm is not None else None),
         "libs": {"torch": torch.__version__, "transformers": transformers.__version__},
@@ -263,14 +300,17 @@ def _git_commit() -> str:
 
 
 @app.local_entrypoint()
-def main(version: str = "", all: bool = False, set: str = "", reward: bool = True):
+def main(version: str = "", all: bool = False, set: str = "", reward: bool = True,
+         decoding: str = "plain", few_shot: int = -1):
     """Evaluate one version, a whole experiment (--set set1 | set2), or everything.
 
         modal run eval.py --version slm-125m-sft
         modal run eval.py --set set1            # the set1 experiment's 6 versions
         modal run eval.py --set set2            # the set2 experiment's 7 versions
         modal run eval.py --all                 # every known version
-        modal run eval.py --set set1 --no-reward  # skip the RM (set1 needs no reward metric)
+        modal run eval.py --set set1 --no-reward       # skip the RM (set1 needs no reward metric)
+        modal run eval.py --set set1 --decoding constrained   # decoding sensitivity ablation
+        modal run eval.py --version base-125m --few-shot 5    # override auto few-shot for a base
     """
     import sys as _sys
     _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -283,9 +323,11 @@ def main(version: str = "", all: bool = False, set: str = "", reward: bool = Tru
         targets = [version]
     commit = _git_commit()
     print(f"[eval] {len(targets)} version(s); code_commit={commit or 'n/a'}; "
-          f"reward_enabled={reward}", flush=True)
+          f"reward_enabled={reward}; decoding={decoding}; few_shot={few_shot} "
+          f"(<0 = auto: 3 for custom bases)", flush=True)
     for v in targets:
         try:
-            evaluate.remote(v, reward_enabled=reward, code_commit=commit)
+            evaluate.remote(v, reward_enabled=reward, code_commit=commit,
+                            decoding=decoding, few_shot=few_shot)
         except Exception as e:
             print(f"[eval/{v}] FAILED: {str(e)[:120]}")

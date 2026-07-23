@@ -79,9 +79,26 @@ def by_key(items, metric, cond="clean"):
     return d
 
 
+# condition labels — closed_book is a parametric-recall probe, NOT grounding (caveat 5):
+# the eval questions come from the same corpus these models were pretrained on, so a high
+# closed_book score can reflect MEMORISATION of training text rather than QA ability.
+COND_LABEL = {
+    "clean": "clean",
+    "realistic": "realistic (with distractors)",
+    "retrieval_failure": "retrieval_failure (abstain expected)",
+    "closed_book": "closed_book (parametric recall — contamination-sensitive)",
+}
+
+
 # ---------- formatting ----------
 def fmt_ci(triple):
     return f"{triple[0]:.3f} [{triple[1]:.3f},{triple[2]:.3f}]"
+
+
+def median(vals):
+    import statistics
+    vals = list(vals)
+    return statistics.median(vals) if vals else 0.0
 
 
 def rank_and_matrix(data, versions, metric, cond="clean"):
@@ -118,32 +135,58 @@ def render_experiment(name, versions, data, L):
         L.append("_no judge scores found — falling back to token-F1 as headline. Run "
                  "judge_eval.py for the fair cross-family metric._\n")
 
-    # per-version headline table (clean condition)
+    # base models are a FLOOR, not peers (caveat 8): they're few-shot-prompted in eval.py so
+    # they show real capability, but a few-shot base vs a zero-shot tuned model still isn't
+    # apples-to-apples, so they're kept as a reference line and excluded from the matrix.
+    bases = [v for v in present if META.get(v, {}).get("is_base")]
+    models = [v for v in present if not META.get(v, {}).get("is_base")]
+
+    # per-version table (clean condition)
     L.append("### Per-version (clean condition)\n")
-    L.append(f"| model | {label(headline)} | groundedness | token-F1 | fabrication↓ | "
-             f"false-abstain↓ | reward (secondary) |")
-    L.append("|---|---|---|---|---|---|---|")
+    L.append(f"| model | {label(headline)} | groundedness | matches-ref | token-F1 | "
+             f"fabrication↓ | false-abstain↓ | median len | reward (within-family) |")
+    L.append("|---|---|---|---|---|---|---|---|---|")
     for v in present:
         it = data[v]["per_item"]
-        hv = mean_ci(list(by_key(it, headline).values())) if by_key(it, headline) else None
-        gr = mean_ci(list(by_key(it, "grounded").values())) if by_key(it, "grounded") else None
-        f1 = mean_ci(list(by_key(it, "token_f1").values()))
-        fb = mean_ci(list(by_key(it, "fabrication").values()))
-        fa = mean_ci(list(by_key(it, "false_abstain").values()))
-        rw_key = by_key(it, "reward")
+        def m(metric, _it=it):
+            k = by_key(_it, metric)
+            return fmt_ci(mean_ci(list(k.values()))) if k else "n/a"
         if META.get(v, {}).get("reward_circular"):
-            rw = "circular — omitted"
-        elif rw_key:
-            rw = fmt_ci(mean_ci(list(rw_key.values())))
+            rw = "circular — omitted"                       # caveat 6: RLAIF trained on this RM
         else:
-            rw = "n/a"
-        L.append(f"| {META.get(v, {}).get('label', v)} | {fmt_ci(hv) if hv else 'n/a'} | "
-                 f"{fmt_ci(gr) if gr else 'n/a'} | {fmt_ci(f1)} | {fmt_ci(fb)} | {fmt_ci(fa)} | {rw} |")
+            rk = by_key(it, "reward")
+            rw = fmt_ci(mean_ci(list(rk.values()))) if rk else "n/a"
+        lk = by_key(it, "resp_len_words")
+        med = f"{median(lk.values()):.0f}w" if lk else "n/a"
+        tag = " _(base·few-shot)_" if v in bases else ""
+        L.append(f"| {META.get(v, {}).get('label', v)}{tag} | {m(headline)} | {m('grounded')} | "
+                 f"{m('matches_ref')} | {m('token_f1')} | {m('fabrication')} | {m('false_abstain')} | "
+                 f"{med} | {rw} |")
+    L.append("\n_Reward is a SECONDARY signal from a 500M-backbone reward model — meaningful only "
+             "WITHIN a family, never across families, and shown next to median length because "
+             "reward models favour longer answers. The judge is the headline (caveat 6)._")
 
-    # pairwise significance on the headline metric
-    rm = rank_and_matrix(data, present, headline)
+    # caveat 4: where lexical token-F1 disagrees with the (meaning-based) judge
+    if headline == HEADLINE:
+        L.append("\n### Lexical-F1 vs judge disagreement (caveat 4)\n")
+        L.append("_Fraction of clean items where token-F1 (>0.5) and the judge (correct>0.5) "
+                 "disagree — higher = token-F1 is a worse proxy for that model, usually because "
+                 "it punishes correct paraphrases. This is why the judge, not F1, is the headline._\n")
+        L.append("| model | F1↔judge disagreement |")
+        L.append("|---|---|")
+        for v in present:
+            it = data[v]["per_item"]
+            f1k, jck = by_key(it, "token_f1"), by_key(it, headline)
+            common = set(f1k) & set(jck)
+            dis = (f"{sum((f1k[k] > 0.5) != (jck[k] > 0.5) for k in common) / len(common):.3f}"
+                   if common else "n/a")
+            L.append(f"| {META.get(v, {}).get('label', v)} | {dis} |")
+
+    # pairwise significance on the headline metric — TUNED models only (bases are a floor)
+    rm = rank_and_matrix(data, models, headline)
     if rm:
         L.append(f"\n### Ranking by {label(headline)} (clean) + paired significance\n")
+        L.append("_Tuned models only; base models are the floor (table above), excluded here._\n")
         for i, v in enumerate(rm["order"], 1):
             L.append(f"{i}. **{META.get(v, {}).get('label', v)}** — {fmt_ci(rm['means'][v])}")
         L.append("\n**Pairwise deltas** (A − B on the same items; ✓ = 95% CI excludes 0):\n")
@@ -153,6 +196,12 @@ def render_experiment(name, versions, data, L):
             sig = "✓" if d["significant"] else "—"
             L.append(f"| {META.get(a,{}).get('label',a)} | {META.get(b,{}).get('label',b)} | "
                      f"{d['delta']:+.3f} | [{d['lo']:+.3f},{d['hi']:+.3f}] | {sig} |")
+    if bases:
+        floor = ", ".join(
+            f"{META.get(v,{}).get('label',v)} {fmt_ci(mean_ci(list(by_key(data[v]['per_item'], headline).values())))}"
+            for v in bases if by_key(data[v]["per_item"], headline))
+        if floor:
+            L.append(f"\n_Floor (few-shot base models): {floor}._")
 
     # RAFT four-condition breakdown (paired gap CIs)
     rafts = [v for v in present if META.get(v, {}).get("is_raft")]
@@ -165,7 +214,7 @@ def render_experiment(name, versions, data, L):
             f1 = by_key(it, "token_f1", c)
             jc = by_key(it, headline, c) if headline == HEADLINE else {}
             ab = by_key(it, "abstain", c)
-            L.append(f"| {c} | {fmt_ci(mean_ci(list(f1.values()))) if f1 else 'n/a'} | "
+            L.append(f"| {COND_LABEL.get(c, c)} | {fmt_ci(mean_ci(list(f1.values()))) if f1 else 'n/a'} | "
                      f"{fmt_ci(mean_ci(list(jc.values()))) if jc else 'n/a'} | "
                      f"{fmt_ci(mean_ci(list(ab.values()))) if ab else 'n/a'} |")
         # paired gaps with CIs (was a bare point estimate before)
@@ -173,10 +222,18 @@ def render_experiment(name, versions, data, L):
         dg = paired_gap_ci(by_key(it, "token_f1", "clean"), by_key(it, "token_f1", "realistic"))
         ca = mean_ci(list(by_key(it, "abstain", "retrieval_failure").values()))
         L.append(f"\n- grounding gap (realistic − closed_book F1): {gg['delta']:+.3f} "
-                 f"[{gg['lo']:+.3f},{gg['hi']:+.3f}] {'✓' if gg['significant'] else '—'}")
+                 f"[{gg['lo']:+.3f},{gg['hi']:+.3f}] {'✓' if gg['significant'] else '—'} "
+                 f"— how much having the right document helps.")
         L.append(f"- distractor gap (clean − realistic F1): {dg['delta']:+.3f} "
                  f"[{dg['lo']:+.3f},{dg['hi']:+.3f}] {'✓' if dg['significant'] else '—'}")
         L.append(f"- correct abstention (retrieval_failure): {fmt_ci(ca)}")
+        # caveat 5: flag when closed_book rivals clean -> likely memorisation, not grounding
+        cb = mean_ci(list(by_key(it, "token_f1", "closed_book").values())) if by_key(it, "token_f1", "closed_book") else None
+        cl_ = mean_ci(list(by_key(it, "token_f1", "clean").values())) if by_key(it, "token_f1", "clean") else None
+        if cb and cl_:
+            flag = " ⚠️ closed_book ≈ clean: score may reflect MEMORISED training text, not QA skill" if cb[0] >= cl_[0] - 0.05 else ""
+            L.append(f"- closed_book F1 {cb[0]:.3f} vs clean {cl_[0]:.3f} — closed_book is a "
+                     f"parametric-recall probe (contamination-sensitive), not grounding.{flag}")
 
 
 def label(metric):
