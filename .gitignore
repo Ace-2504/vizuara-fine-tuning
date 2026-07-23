@@ -17,3 +17,7 @@ data/sft/
 gen_run.log
 checkpoints/
 rl/data/
+.venv-cuda/
+migrate/
+eval_results/
+install_cuda.log
