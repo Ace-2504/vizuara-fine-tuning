@@ -178,15 +178,21 @@ def evaluate(version: str, reward_enabled: bool = True, code_commit: str = "",
             if len(shots) >= k_shot:
                 break
 
-    def render(system, user):
+    def render(system, user, use_shots):
         if fam == "gemma":
             return tok.apply_chat_template([{"role": "user", "content": f"{system}\n\n{user}"}],
                                            tokenize=False, add_generation_prompt=True)
         parts = [f"<|system|>\n{system}<|eos|>\n"]
-        for u, a in shots:                      # empty for tuned models -> unchanged zero-shot
+        for u, a in use_shots:                  # empty for tuned models -> unchanged zero-shot
             parts.append(f"<|user|>\n{u}<|eos|>\n<|assistant|>\n{a}<|eos|>\n")
         parts.append(f"<|user|>\n{user}<|eos|>\n<|assistant|>\n")
         return "".join(parts)
+
+    # few-shot must FIT the model's context: 3 exemplars can push a 1024-ctx base past 1024,
+    # where RoPE positions are undefined and the base floor would be corrupted. Reserve room
+    # for the answer and drop exemplars until the prompt fits.
+    MAX_CTX = getattr(model.config, "max_position_embeddings", 1024) or 1024
+    GEN_BUDGET = MAX_CTX - 160 - 8
 
     # ---- decoding preset (caveat 7) ----
     # 'plain' (pure greedy) is the primary: repetition_penalty / no_repeat_ngram can clip
@@ -200,8 +206,14 @@ def evaluate(version: str, reward_enabled: bool = True, code_commit: str = "",
     dec_kwargs = DECODINGS.get(decoding, DECODINGS["plain"])
 
     def gen(system, user):
-        text = render(system, user)
-        ids = tok(text, return_tensors="pt", add_special_tokens=(fam == "gemma")).input_ids.to(dev)
+        k = len(shots)                          # 0 for tuned models -> single pass, unchanged
+        while True:
+            text = render(system, user, shots[:k])
+            ids = tok(text, return_tensors="pt",
+                      add_special_tokens=(fam == "gemma")).input_ids.to(dev)
+            if ids.shape[1] <= GEN_BUDGET or k == 0:
+                break
+            k -= 1                              # base few-shot overflowed -> drop an exemplar
         with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
             out = model.generate(ids, max_new_tokens=160, pad_token_id=tok.pad_token_id or eos,
                                  eos_token_id=eos, **dec_kwargs, **gk)
