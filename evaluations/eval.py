@@ -123,11 +123,11 @@ def evaluate(version: str, reward_enabled: bool = True, code_commit: str = "",
         src = BASES[version]
         tok = AutoTokenizer.from_pretrained(src, token=token)
         if fam == "gemma":
-            from transformers import BitsAndBytesConfig
-            bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                                     bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)
-            model = AutoModelForCausalLM.from_pretrained(src, quantization_config=bnb,
-                    attn_implementation="eager", torch_dtype=torch.bfloat16, token=token).eval()
+            # bf16 (not 4-bit) for INFERENCE: on A100-40GB gemma-2-2b bf16 is ~5GB and 2-3x
+            # faster to generate than 4-bit (no dequant), which is what lets RAFT's 2,000
+            # items finish inside the timeout. eager attention kept for gemma-2 soft-capping.
+            model = AutoModelForCausalLM.from_pretrained(src, attn_implementation="eager",
+                    torch_dtype=torch.bfloat16, token=token).to(dev).eval()
         else:
             model = AutoModelForCausalLM.from_pretrained(src, torch_dtype=torch.bfloat16,
                     token=token).to(dev).eval()
@@ -135,13 +135,13 @@ def evaluate(version: str, reward_enabled: bool = True, code_commit: str = "",
         d = f"{CKPT}/{version}"
         is_adapter = os.path.exists(f"{d}/adapter_config.json")
         if is_adapter:
-            from transformers import BitsAndBytesConfig
             from peft import PeftModel
             base_id = json.load(open(f"{d}/adapter_config.json"))["base_model_name_or_path"]
-            bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                                     bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)
-            base = AutoModelForCausalLM.from_pretrained(base_id, quantization_config=bnb,
-                   attn_implementation="eager", torch_dtype=torch.bfloat16, token=token)
+            # QLoRA adapter served on a bf16 base (standard inference path) — 2-3x faster than
+            # the 4-bit base and reliable within the A100 timeout. Consistent with base-gemma,
+            # which is also loaded in bf16, so the set1 gemma comparison stays same-precision.
+            base = AutoModelForCausalLM.from_pretrained(base_id, attn_implementation="eager",
+                   torch_dtype=torch.bfloat16, token=token).to(dev)
             model = PeftModel.from_pretrained(base, d).eval()
             tok = AutoTokenizer.from_pretrained(d, token=token)
         else:
