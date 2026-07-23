@@ -346,10 +346,18 @@ def main(version: str = "", all: bool = False, set: str = "", reward: bool = Tru
     print(f"[eval] spawning {len(targets)} version(s) in parallel; code_commit={commit or 'n/a'}; "
           f"reward_enabled={reward}; decoding={decoding}; few_shot={few_shot} "
           f"(<0 = auto: 3 for custom bases); force={force}", flush=True)
+    # Gemma-2B (4-bit + eager soft-capping) is far slower to generate than the custom SLMs;
+    # on L4 it blew the 2h per-call timeout (esp. RAFT's 2,000 items). Route every gemma
+    # version to an A100-40GB with a 6h timeout via with_options; the SLMs stay on L4.
+    def fn_for(v):
+        if "gemma" in v:
+            return evaluate.with_options(gpu="A100-40GB", timeout=6 * 60 * 60)
+        return evaluate
+
     # spawn all (parallel + detach-resilient), then wait; if the client dies under --detach
     # the spawned calls keep running and still commit their results.
-    handles = [(v, evaluate.spawn(v, reward_enabled=reward, code_commit=commit,
-                                  decoding=decoding, few_shot=few_shot, force=force))
+    handles = [(v, fn_for(v).spawn(v, reward_enabled=reward, code_commit=commit,
+                                   decoding=decoding, few_shot=few_shot, force=force))
                for v in targets]
     for v, h in handles:
         try:
