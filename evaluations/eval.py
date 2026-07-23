@@ -102,12 +102,20 @@ def bootstrap_ci(vals, n=5000, seed=0):
 @app.function(image=image, gpu="L4", volumes={"/data": vol},
               secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 2)
 def evaluate(version: str, reward_enabled: bool = True, code_commit: str = "",
-             decoding: str = "plain", few_shot: int = -1):
+             decoding: str = "plain", few_shot: int = -1, force: bool = False):
     import hashlib, json, os, time
     import torch
     from transformers import (AutoModelForCausalLM, AutoTokenizer,
                               AutoModelForSequenceClassification)
     dev = "cuda"; token = os.environ.get("HF_TOKEN")
+
+    # resumability (power-cut safe): each version commits its own /data/eval/<v>.json when
+    # done, so on a re-run we skip what already finished. force=True redoes it anyway.
+    vol.reload()
+    out_path = f"/data/eval/{version}.json"
+    if not force and os.path.exists(out_path):
+        print(f"[eval/{version}] result already on volume -> skip (force to redo)", flush=True)
+        return {"version": version, "skipped": True}
 
     # ---- load the model (base / full / adapter) ----
     fam = "gemma" if "gemma" in version else "custom"
@@ -313,16 +321,17 @@ def _git_commit() -> str:
 
 @app.local_entrypoint()
 def main(version: str = "", all: bool = False, set: str = "", reward: bool = True,
-         decoding: str = "plain", few_shot: int = -1):
+         decoding: str = "plain", few_shot: int = -1, force: bool = False):
     """Evaluate one version, a whole experiment (--set set1 | set2), or everything.
 
-        modal run eval.py --version slm-125m-sft
-        modal run eval.py --set set1            # the set1 experiment's 6 versions
-        modal run eval.py --set set2            # the set2 experiment's 7 versions
-        modal run eval.py --all                 # every known version
-        modal run eval.py --set set1 --no-reward       # skip the RM (set1 needs no reward metric)
-        modal run eval.py --set set1 --decoding constrained   # decoding sensitivity ablation
-        modal run eval.py --version base-125m --few-shot 5    # override auto few-shot for a base
+    Versions are SPAWNED in parallel, so run with --detach and a power cut / disconnect
+    won't stop them — each commits its own result and a re-run skips what finished.
+
+        modal run --detach eval.py --set set1 --no-reward   # set1 (no reward metric needed)
+        modal run --detach eval.py --set set2               # set2 (reward for DPO; RLAIF omits)
+        modal run eval.py --version slm-125m-sft            # a single version
+        modal run --detach eval.py --set set2 --force       # re-run all, ignoring saved results
+        modal run --detach eval.py --set set1 --decoding constrained   # decoding ablation
     """
     import sys as _sys
     _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -334,12 +343,16 @@ def main(version: str = "", all: bool = False, set: str = "", reward: bool = Tru
     else:
         targets = [version]
     commit = _git_commit()
-    print(f"[eval] {len(targets)} version(s); code_commit={commit or 'n/a'}; "
+    print(f"[eval] spawning {len(targets)} version(s) in parallel; code_commit={commit or 'n/a'}; "
           f"reward_enabled={reward}; decoding={decoding}; few_shot={few_shot} "
-          f"(<0 = auto: 3 for custom bases)", flush=True)
-    for v in targets:
+          f"(<0 = auto: 3 for custom bases); force={force}", flush=True)
+    # spawn all (parallel + detach-resilient), then wait; if the client dies under --detach
+    # the spawned calls keep running and still commit their results.
+    handles = [(v, evaluate.spawn(v, reward_enabled=reward, code_commit=commit,
+                                  decoding=decoding, few_shot=few_shot, force=force))
+               for v in targets]
+    for v, h in handles:
         try:
-            evaluate.remote(v, reward_enabled=reward, code_commit=commit,
-                            decoding=decoding, few_shot=few_shot)
+            h.get()
         except Exception as e:
-            print(f"[eval/{v}] FAILED: {str(e)[:120]}")
+            print(f"[eval/{v}] FAILED: {str(e)[:150]}")
