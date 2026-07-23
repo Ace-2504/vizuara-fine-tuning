@@ -351,7 +351,10 @@ def main(version: str = "", all: bool = False, set: str = "", reward: bool = Tru
     # version to an A100-40GB with a 6h timeout via with_options; the SLMs stay on L4.
     def fn_for(v):
         if "gemma" in v:
-            return evaluate.with_options(gpu="A100-40GB", timeout=6 * 60 * 60)
+            # bf16 gemma-2-2b is ~5GB -> fits on L4, which HAS capacity (A100 was stuck
+            # 'waiting to be scheduled ... acquiring more capacity'). bf16 is fast enough on
+            # L4; just raise the per-call timeout so RAFT's 2,000 items finish.
+            return evaluate.with_options(gpu="L4", timeout=6 * 60 * 60)
         return evaluate
 
     # spawn all (parallel + detach-resilient), then wait; if the client dies under --detach
