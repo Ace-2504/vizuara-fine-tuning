@@ -66,6 +66,19 @@ def q_of(user):
     return user.split("Question:")[-1].strip() if "Question:" in user else user[-160:]
 
 
+def clean_response(resp, cap=230):
+    """Tidy a raw model answer for display: the RAFT models emit ##begin_quote##…##end_quote##
+    markers (their trained 'quote the source, then answer' format) — render those as normal
+    quotation marks, collapse whitespace, and truncate on a word boundary."""
+    import re
+    resp = resp.replace("##begin_quote##", " “").replace("##end_quote##", "” ")
+    resp = re.sub(r"#+begin_quote#+|#+end_quote#+", "", resp)     # any stray/partial markers
+    resp = " ".join(resp.split()).strip()
+    if len(resp) > cap:
+        resp = resp[:cap].rsplit(" ", 1)[0].rstrip(" ,.;:“") + " …"
+    return resp or "(empty answer)"
+
+
 # ---------------- charts ----------------
 def grouped_chart(name):
     JUD, WO = "#f5b342", "#8b95a7"
@@ -262,7 +275,7 @@ def examples_html(name):
         for v in tuned:
             it = d[v]
             j = it.get("judge", {})
-            resp = it["resp"].strip().replace("\n", " ")[:200] or "(empty)"
+            resp = clean_response(it["resp"])
             g = "yes" if j.get("grounded") else "no"
             L.append(f'<tr><td class=model>{esc(META[v]["label"])}</td>'
                      f'<td class=resp>{esc(resp)}</td>'
