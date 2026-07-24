@@ -33,28 +33,36 @@ Show the top of the report + the "Reproducibility" line. Hit these four points f
    per-model bars are never treated as a test.
 
 ### 1:40–2:50 — The headline result (show the per-version table + ranking)
-- Read the ranking by judged correctness. Expected shape: **base models near the floor**
-  (they can't follow the grounded-QA format), **SFT and RAFT far above them.**
-  - "SLM-125M base scores `[FILL]` — essentially the floor, as expected for an un-tuned model."
-  - "After SFT it jumps to `[FILL]`, a **significant** gain (Δ `[FILL]`, CI `[FILL]`)."
-- The cross-family comparison: "Does a 125M model close the gap to Gemma-2B on *this* grounded
-  task? On the shared eval, SLM-125M SFT vs Gemma-2B SFT is Δ `[FILL]`, CI `[FILL]` —
-  `[significant / not resolved]`." Say the honest version of whatever the number is.
-- Groundedness column: "Fine-tuning also raised faithfulness — groundedness went `[FILL]→[FILL]`."
+- **Lead with the size story.** "Judged correctness, clean condition. Gemma-2B is near-ceiling
+  everywhere — base **0.954**, SFT **0.964**, RAFT **0.975** — while the 125M is far lower:
+  base **0.000**, SFT **0.261**, RAFT **0.049**."
+- The cross-family gap: "Gemma-2B SFT beats SLM-125M SFT by **+0.703** (95% CI [0.667, 0.738]),
+  significant. A 20×-larger model is simply in a different league on grounded QA — the 125M
+  does **not** close that gap."
+- The 125M's own gain from SFT: "For the tiny model, SFT is what unlocks the format — base
+  **0.000 → SFT 0.261** (significant), and groundedness rose **0.068 → 0.456**. Un-tuned, even
+  few-shot, it scores zero — it can't follow grounded-QA instructions at all."
 
-### 2:50–4:00 — SFT vs RAFT: the real point of Set 1 (show the RAFT breakdown tables)
-- "RAFT trains the model to handle **retrieved documents that may not contain the answer** — so
-  the interesting question isn't just clean accuracy, it's **robustness and abstention.**"
-- Walk the four RAFT conditions for the RAFT models:
-  - **clean vs realistic** (distractor gap): "Adding distractor documents costs RAFT only
-    Δ `[FILL]` F1 — `[small/large]`, showing `[good/poor]` distractor robustness."
-  - **retrieval_failure** (correct abstention): "When the answer is genuinely absent, RAFT abstains
-    `[FILL]%` of the time — this is the behavior SFT never learns."
-  - **grounding gap** (realistic − closed_book): "`[FILL]`, i.e. having the right document
-    `[does/doesn't] measurably help`."
-- Head-to-head: "On clean correctness, SFT vs RAFT is Δ `[FILL]`, CI `[FILL]`. So RAFT buys
-  `[abstention/robustness]` at `[no cost / a small cost]` to clean accuracy — that trade is the
-  Set-1 takeaway."
+### 2:50–4:00 — The twist: RAFT *hurt* the 125M (show the RAFT breakdown tables)
+- "Here's the surprise. RAFT trains the model to abstain when the answer isn't retrieved — but
+  on the 125M it **backfired**: SFT **0.261 → RAFT 0.049**, a **−0.212** drop (CI [0.175, 0.248],
+  significant). RAFT made the small model *worse*."
+- Why — over-abstention: "On the RAFT breakdown, the 125M-RAFT abstains on **83.6%** of the
+  *clean, answerable* questions — it learned to say 'not stated in the context' even when the
+  answer is right there. It over-generalised the abstention lesson because it's too small to tell
+  'absent' from 'present'."
+- Contrast with Gemma: "The 2B model handles RAFT fine — Gemma-RAFT vs Gemma-SFT is only
+  **+0.011, not significant** (a tie), and it abstains correctly **83.6%** of the time only when
+  the answer is genuinely missing (retrieval_failure), while answering the clean ones. Its
+  grounding gap is **+0.083** (significant) — having the right document measurably helps."
+- Takeaway line: "So RAFT is a **capacity-dependent** recipe: safe abstention for a 2B model,
+  but a net loss for a 125M that can't afford the caution."
+
+### (optional) — token-F1 would have lied to you
+- "One methodology point worth 15 seconds: if I'd ranked by token-F1, Gemma-RAFT looks *terrible*
+  — F1 **0.145**. But the judge says **0.975** correct. F1 punished its verbose paraphrasing; the
+  F1↔judge disagreement is **0.97**. This is why the headline metric is an independent LLM judge,
+  not word-overlap."
 
 ### 4:00–4:40 — Honest caveats (say these out loud — mentors reward it)
 - "The reference answers are teacher-generated, so token-F1 is a proxy; that's exactly why the
@@ -64,12 +72,16 @@ Show the top of the report + the "Reproducibility" line. Hit these four points f
 - "The LLM judge isn't yet calibrated against human labels — the honest next step."
 
 ### 4:40–5:00 — Close
-- "So Set 1: fine-tuning takes a 125M model from the floor to `[FILL]` judged correctness; RAFT
-  adds abstention and distractor-robustness at `[no/low]` cost; and against Gemma-2B the 125M is
-  `[competitive on X / behind on Y]`. Every claim here is backed by a paired significance test on
-  a decontaminated held-out set."
+- "So Set 1, three findings: **(1)** SFT takes the 125M from **0.00 to 0.26** — it's what makes a
+  tiny model usable at all. **(2)** RAFT is capacity-dependent — a **−0.21** loss on the 125M
+  (it over-abstains on 84% of answerable questions) but a harmless tie on Gemma. **(3)** Scale
+  dominates everything: Gemma-2B beats the 125M by **+0.70**, significant, on every recipe. And
+  token-F1 would have inverted the Gemma ranking — the independent judge is doing real work here.
+  Every number is a paired significance test on a decontaminated held-out set."
 
 ---
-**Pre-record checklist:** ① run the pipeline (see EVAL-HARNESS-REVIEW.md) so REPORT.md exists ·
-② replace every `[FILL]` with the real number + CI · ③ keep the report's SET1 tables on screen
-during 1:40–4:00 · ④ if a gap is *not* significant, say "not resolved," don't oversell it.
+**Pre-record checklist:** ① results are in `eval_results/REPORT.md` (SET1 section) · ② keep that
+table on screen during 1:40–4:00 · ③ the RAFT-hurts-125M over-abstention number (83.6% abstain on
+clean) is the most striking single stat — land it clearly · ④ base-gemma is `gemma-2-2b-it`
+(already instruction-tuned), so its 0.954 "base" score is a ceiling, not a fair untuned floor —
+say so if asked.
