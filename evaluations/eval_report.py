@@ -241,6 +241,109 @@ def label(metric):
             "grounded": "groundedness"}.get(metric, metric)
 
 
+METHOD_BLURB = (
+    "_Headline metric = an independent LLM judge's correctness (1–5, rescaled to 0–1), which is "
+    "fair across the 125M / 500M / Gemma tokenizers and — unlike the reward model — is not the "
+    "RLAIF training objective. token-F1 is reported alongside as a lexical proxy. Every "
+    "model-vs-model claim uses a **paired bootstrap** on the same eval items (a difference counts "
+    "only when the delta's 95% CI excludes 0); overlapping per-model CIs are never used as a test. "
+    "All models scored on one decontaminated, held-out eval set (500 pair_ids × 4 RAFT conditions)._\n"
+)
+
+
+def key_findings(name, versions, data, headline):
+    """Data-driven bullets — computed from the numbers, not hand-written."""
+    present = [v for v in versions if v in data]
+    models = [v for v in present if not META.get(v, {}).get("is_base")]
+    F = []
+    rm = rank_and_matrix(data, models, headline)
+    if rm:
+        top = rm["order"][0]
+        F.append(f"**Best model:** {META[top]['label']} — {fmt_ci(rm['means'][top])} judged correctness (clean).")
+        sig = [p for p in rm["pairs"] if p[2]["significant"]]
+        F.append(f"**{len(sig)} of {len(rm['pairs'])}** pairwise comparisons are statistically resolved "
+                 f"(paired bootstrap, 95% CI excludes 0).")
+        # biggest significant gap
+        if sig:
+            a, b, d = max(sig, key=lambda p: abs(p[2]["delta"]))
+            F.append(f"**Largest gap:** {META[a]['label']} beats {META[b]['label']} by "
+                     f"{d['delta']:+.3f} [{d['lo']:+.3f},{d['hi']:+.3f}].")
+    # base -> best lift, per family
+    for fam in ("125m", "500m", "gemma"):
+        fbase = [v for v in present if META.get(v, {}).get("family") == fam and META.get(v, {}).get("is_base")]
+        fmods = [v for v in models if META.get(v, {}).get("family") == fam]
+        if fbase and fmods:
+            b0 = mean_ci(list(by_key(data[fbase[0]]["per_item"], headline).values()))[0]
+            best = max(fmods, key=lambda v: mean_ci(list(by_key(data[v]["per_item"], headline).values()))[0])
+            bb = mean_ci(list(by_key(data[best]["per_item"], headline).values()))[0]
+            F.append(f"**{fam.upper()} lift:** base {b0:.3f} → best ({META[best]['label']}) {bb:.3f}.")
+    # anomaly flags
+    for v in models:
+        ab = by_key(data[v]["per_item"], "abstain", "clean")
+        if ab and mean_ci(list(ab.values()))[0] > 0.3:
+            F.append(f"⚠️ **{META[v]['label']} over-abstains** — says 'not stated' on "
+                     f"{mean_ci(list(ab.values()))[0]*100:.0f}% of *answerable* clean questions.")
+        ln = by_key(data[v]["per_item"], "resp_len_words", "clean")
+        if ln and median(list(ln.values())) <= 3:
+            F.append(f"⚠️ **{META[v]['label']} collapsed** to ~{median(list(ln.values())):.0f}-word answers.")
+        f1k, jck = by_key(data[v]["per_item"], "token_f1"), by_key(data[v]["per_item"], headline)
+        common = set(f1k) & set(jck)
+        if common:
+            dis = sum((f1k[k] > 0.5) != (jck[k] > 0.5) for k in common) / len(common)
+            if dis > 0.4:
+                F.append(f"**token-F1 misleads for {META[v]['label']}** (F1↔judge disagreement "
+                         f"{dis:.2f}) — trust the judge, not word-overlap.")
+    return F
+
+
+def _q_of(user):
+    return user.split("Question:")[-1].strip()[:130] if "Question:" in user else user[-130:]
+
+
+def examples_section(name, versions, data, L):
+    """Pull real generations that illustrate the headline phenomena."""
+    present = [v for v in versions if v in data]
+    tuned = [(v, it) for v in present if not META.get(v, {}).get("is_base")
+             for it in data[v]["per_item"] if it.get("cond") == "clean"]
+    L.append("\n### Illustrative examples (real generations)\n")
+
+    def show(title, v, it):
+        s, j = it["scores"], it.get("judge", {})
+        L.append(f"**{title}** — _{META.get(v, {}).get('label', v)}_")
+        L.append(f"- Q: {esc_inline(_q_of(it['user']))}")
+        L.append(f"- reference: {esc_inline(it['ref'][:150])}")
+        L.append(f"- model answer: {esc_inline(it['resp'][:240])}")
+        L.append(f"- token-F1 **{s['token_f1']:.2f}** · judge correct **{j.get('correct','?')}/5** · "
+                 f"grounded {j.get('grounded','?')} · {int(s['resp_len_words'])} words\n")
+
+    def first(pred):
+        for v, it in tuned:
+            if pred(v, it):
+                return v, it
+        return None
+
+    shown = 0
+    ex = first(lambda v, it: it.get("judge", {}).get("correct", 0) >= 4
+               and it["scores"]["token_f1"] < 0.2 and it["scores"]["resp_len_words"] >= 8)
+    if ex:
+        show("Correct answer that token-F1 badly under-scores (why the judge is the headline)", *ex); shown += 1
+    ex = first(lambda v, it: it["scores"]["resp_len_words"] <= 3 and len(it["resp"].strip()) > 0)
+    if ex:
+        show("Degenerate short output (model collapse)", *ex); shown += 1
+    ex = first(lambda v, it: it.get("answerable") and "not stated in the context" in it["resp"].lower())
+    if ex:
+        show("Over-abstention: refuses a question whose answer is present", *ex); shown += 1
+    ex = first(lambda v, it: it["scores"].get("fabrication", 0) > 0 and it.get("judge", {}).get("grounded") is False)
+    if ex:
+        show("Ungrounded / fabricated content (judge flags it)", *ex); shown += 1
+    if not shown:
+        L.append("_(no notable-pattern examples surfaced in this set)_")
+
+
+def esc_inline(s):
+    return s.replace("\n", " ").replace("|", "\\|").strip()
+
+
 def manifest_check(data, L):
     hashes = {}
     for v, d in data.items():
@@ -270,35 +373,39 @@ def main():
     if not data:
         print(f"no eval json found in {results_dir}"); return
 
-    L = ["# SLM fine-tuning evaluation — set1 & set2\n",
-         "_Two independent experiments. Headline = LLM-judge correctness (cross-family fair); "
-         "reward model is secondary and suppressed for RLAIF (circular). All model-vs-model "
-         "claims use paired bootstrap on shared items — overlapping per-model CIs are NOT used "
-         "as a test._\n"]
-    for name in ("set1", "set2"):
-        render_experiment(name, EXPERIMENTS[name], data, L)
-    manifest_check(data, L)
-
-    report = "\n".join(L) + "\n"
-    print(report)
-    with open(os.path.join(results_dir, "REPORT.md"), "w", encoding="utf-8") as f:
-        f.write(report)
-
-    # machine-readable comparisons for both sets
+    TITLES = {"set1": "SET1 — base vs SFT vs RAFT (125M & Gemma-2B)",
+              "set2": "SET2 — alignment: DPO vs RLAIF (125M, 500M, Gemma-2B)"}
     comparisons = {}
     for name in ("set1", "set2"):
         present = [v for v in EXPERIMENTS[name] if v in data]
         any_judged = any(data[v]["judged"] and any(it.get("judge") for it in data[v]["per_item"])
                          for v in present)
         headline = HEADLINE if any_judged else "token_f1"
+
+        # ---- detailed per-experiment report ----
+        L = [f"# {TITLES[name]}\n", "_Detailed evaluation report — this experiment stands alone; "
+             "no numbers are compared against the other set._\n", METHOD_BLURB]
+        L.append("## Key findings\n")
+        for b in key_findings(name, EXPERIMENTS[name], data, headline):
+            L.append(f"- {b}")
+        render_experiment(name, EXPERIMENTS[name], data, L)      # tables + rankings + RAFT
+        examples_section(name, EXPERIMENTS[name], data, L)       # real generations
+        manifest_check({v: data[v] for v in present}, L)         # per-set reproducibility
+        report = "\n".join(L) + "\n"
+        out = os.path.join(results_dir, f"REPORT_{name.upper()}.md")
+        with open(out, "w", encoding="utf-8") as f:
+            f.write(report)
+        print(f"wrote {out}")
+
         rm = rank_and_matrix(data, present, headline)
         if rm:
             comparisons[name] = {
                 "headline": headline, "order": rm["order"],
                 "means": {v: rm["means"][v] for v in rm["order"]},
                 "pairs": [{"a": a, "b": b, **d} for a, b, d in rm["pairs"]]}
+
     json.dump(comparisons, open(os.path.join(results_dir, "comparisons.json"), "w"), indent=2)
-    print(f"\nwrote {os.path.join(results_dir, 'REPORT.md')} and comparisons.json")
+    print("wrote comparisons.json")
 
 
 if __name__ == "__main__":
