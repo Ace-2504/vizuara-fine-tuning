@@ -272,8 +272,15 @@ def examples_html(name):
 
 
 def key_findings_html(name):
+    import re
     bullets = key_findings(name, EXPERIMENTS[name], DATA, "judge_correct")
-    lis = "".join(f"<li>{clean_terms(b)}</li>" for b in bullets)
+
+    def fmt(b):
+        b = clean_terms(b)
+        b = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", b)   # markdown bold -> HTML
+        b = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"<em>\1</em>", b)
+        return b
+    lis = "".join(f"<li>{fmt(b)}</li>" for b in bullets)
     return f'<div class="card"><h3 style="margin-top:0">Key findings</h3><ul>{lis}</ul></div>'
 
 
@@ -365,7 +372,8 @@ def scores_body():
         "an answer. How do we grade it? That's what these scores do — and here's the story of each, "
         "in the order they matter.</div>"
         "<h3>AI-judged correctness — the main score</h3>"
-        "<p>An independent AI (Google's Gemini), which <b>never sees which model wrote the answer</b>, "
+        "<p>An independent AI model — Google's <b>gemini-3.1-flash-lite</b> — which <b>never sees "
+        "which model wrote the answer</b>, "
         "reads the documents, the question, the known-correct answer, and the model's answer, and rates "
         "how correct it is from 1 to 5. We rescale that to a 0–1 number (1.0 = perfect). This is our "
         "headline score because, unlike counting words, it understands <i>meaning</i> — a correct "
