@@ -60,6 +60,7 @@ single RTX 3060 (12 GB) — and wiring it to the 13 model sites plus the arena.
 | [20](20-gemma-variants-duplicated-the-base.md) | Each Gemma variant loaded a private copy of the same base (~15 GB) | memory | `serve_api.py` |
 | [21](21-missing-attention-mask-pad-equals-eos.md) | No `attention_mask` where pad and eos share a token id | correctness | `serve_api.py` |
 | [22](22-launch-json-cwd-cannot-cross-drives.md) | Dev-server `cwd` cannot cross drives (C: → D:) | environment | `.claude/launch.json` |
+| [23](23-judge-model-fallback-race.md) | Parallel judge calls all 404'd racing the lazy model fallback | concurrency | `serve_api.py` · `teacher.py` |
 
 Bug 15 also **recurred** here (same `modal volume get` collapse, different call site) — its entry
 now carries the recurrence and the sturdier `mkdir -p` form.
@@ -74,3 +75,8 @@ allocation, not repaired after it.
 
 Together 19 + 20 moved the ceiling from "dies at 11 models" to **all 13 resident in 6.55 GB**,
 verified under a 20-thread / 60-request load with 0 failures and 0 evictions.
+
+23 came later, wiring the arena to judge answers live, and rhymes with 18: state that is perfectly
+safe in the sequential offline harness (`judge_eval.py` loops one item at a time) breaks the moment
+it is shared across threads. Both were fixed by making the shared thing explicit — a refcount in
+18, a serial first call in 23 — rather than by adding retries around the symptom.
