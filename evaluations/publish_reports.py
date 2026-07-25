@@ -325,7 +325,11 @@ INTRO = {
 def report_page(name):
     h1 = ("Set 1 — does fine-tuning a small model help?" if name == "set1"
           else "Set 2 — which alignment method is better?")
-    parts = [f"<h1>{h1}</h1>", f'<div class="intro">{INTRO[name]}</div>',
+    judge_note = ('<p style="font-size:12.5px;color:var(--muted);margin:-4px 0 4px">The '
+                  'independent AI judge used for every score on this page is Google\'s '
+                  '<b style="color:var(--fg)">gemini-3.1-flash-lite</b>. '
+                  '<a href="/scores">What the scores mean &rarr;</a></p>')
+    parts = [f"<h1>{h1}</h1>", f'<div class="intro">{INTRO[name]}</div>', judge_note,
              key_findings_html(name), grouped_chart(name)]
     if name == "set2":
         parts.append(delta_chart(name))
