@@ -61,6 +61,7 @@ single RTX 3060 (12 GB) — and wiring it to the 13 model sites plus the arena.
 | [21](21-missing-attention-mask-pad-equals-eos.md) | No `attention_mask` where pad and eos share a token id | correctness | `serve_api.py` |
 | [22](22-launch-json-cwd-cannot-cross-drives.md) | Dev-server `cwd` cannot cross drives (C: → D:) | environment | `.claude/launch.json` |
 | [23](23-judge-model-fallback-race.md) | Parallel judge calls all 404'd racing the lazy model fallback | concurrency | `serve_api.py` · `teacher.py` |
+| [24](24-model-markdown-rendered-literally.md) | Model output rendered markdown literally — **recurrence of 16** | rendering | `Demo.tsx` · `ArenaLive.tsx` |
 
 Bug 15 also **recurred** here (same `modal volume get` collapse, different call site) — its entry
 now carries the recurrence and the sturdier `mkdir -p` form.
@@ -75,6 +76,12 @@ allocation, not repaired after it.
 
 Together 19 + 20 moved the ceiling from "dies at 11 models" to **all 13 resident in 6.55 GB**,
 verified under a 20-thread / 60-request load with 0 failures and 0 evictions.
+
+24 is the one to learn from: it is [bug 16](16-published-report-markup-leaks.md) a second time. 16
+was fixed at the single call site that reported it, rather than at the fact underneath — that model
+output is lightly-formatted text, not plain text. Every later surface that displayed a model answer
+reproduced it. The fix now lives in one shared `ModelText` component, so the next surface inherits
+it. Fix the property of the data, not the screen that showed it.
 
 23 came later, wiring the arena to judge answers live, and rhymes with 18: state that is perfectly
 safe in the sequential offline harness (`judge_eval.py` loops one item at a time) breaks the moment
