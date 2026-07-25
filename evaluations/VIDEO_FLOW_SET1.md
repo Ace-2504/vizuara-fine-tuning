@@ -6,16 +6,16 @@ words to read. Pace is ~150 words/min; the whole thing is ~5 minutes. Live page:
 
 ---
 
-### 0:00–0:35 · Intro
-**[STAGE: Open the Overview page — https://reportsite-jade.vercel.app — full screen.]**
+### 0:00–0:40 · Intro
+**[STAGE: Open the Set 1 page — https://reportsite-jade.vercel.app/set1 — full screen, at the top.]**
 
-**SAY:** "Large language models are powerful but expensive to run. I wanted to know how far
-*small* models — from 125 million up to 2 billion parameters — can be pushed on a real,
-high-stakes task: answering questions using only a set of legal or financial documents you
-give them, without making things up. This is the first of two experiments. Set 1 asks a
-simple question: does fine-tuning actually make a small model good at this?"
-
-**[STAGE: Click “Set 1 — does fine-tuning help…” to open the /set1 page. Stay at the top.]**
+**SAY:** "Small language models are cheap to run and easy to deploy — a single GPU, even a
+laptop, is enough. The real question is how *capable* a small model can be on a serious task.
+The task here is grounded question-answering: the model is given a set of legal or financial
+documents and must answer using only those documents — and say so when the answer isn't there,
+never inventing facts. This experiment asks the most basic version of that question: does
+fine-tuning make a small model good at this, and does teaching it to refuse when it's unsure
+help — or hurt?"
 
 ---
 
@@ -102,8 +102,8 @@ outputs."
 **SAY:** "So, three findings from Set 1. First, plain fine-tuning is what makes a tiny model
 usable at all. Second, teaching it to refuse backfires at small scale — it becomes too timid.
 And third, size dominates everything: the 2-billion model beats the 125-million one on every
-recipe, and every one of those gaps passed a statistical significance test. Set 2 asks the
-next question — once a model can answer, can we make it *better*?"
+recipe, and every one of those gaps passed a statistical significance test. The takeaway —
+fine-tuning is essential, refusal-training is a trap at small scale, and scale still wins."
 
 **[STAGE: Click through to /set2 if recording both back-to-back, otherwise stop.]**
 

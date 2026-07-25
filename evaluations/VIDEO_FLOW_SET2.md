@@ -6,13 +6,16 @@ words to read. Pace ~150 words/min; ~5 minutes total. Live page:
 
 ---
 
-### 0:00–0:35 · Intro
-**[STAGE: Open the Set 2 page — https://reportsite-jade.vercel.app/set2 — at the top.]**
+### 0:00–0:40 · Intro
+**[STAGE: Open the Set 2 page — https://reportsite-jade.vercel.app/set2 — full screen, at the top.]**
 
-**SAY:** "This is the second experiment. In the first one I showed that fine-tuning lets a
-small model answer questions from documents. Set 2 asks the follow-up: once a model can
-answer, can we make it *better* by aligning it toward preferred answers — and if so, which
-alignment method should we use?"
+**SAY:** "Small language models are cheap to run and easy to deploy, which makes them appealing
+for real products — if you can make them good enough. The task here is grounded
+question-answering: a small model is given legal or financial documents and must answer using
+only those documents, without making things up. Now suppose you've already trained a small
+model to do that. Can you make it *better* by aligning it toward the answers people prefer —
+and if so, which alignment method should you use? That is exactly what this experiment
+measures."
 
 ---
 
@@ -34,8 +37,8 @@ amber bars, top to bottom.]**
 **SAY:** "Same setup as before — the amber bar is how often the independent AI judge — Google's gemini-3.1-flash-lite — rated
 each model correct. And the same headline jumps out: **size dominates**. The two Gemma models
 score around 0.9; the 500-million models sit near 0.3 to 0.44; the 125-million models are
-lowest. The grey bars are the older word-overlap score — and just like in Set 1, notice how
-badly it under-rates the Gemma models, which is why we don't rely on it."
+lowest. The grey bars are the older word-overlap score — notice how badly it under-rates the
+Gemma models, which is why we don't rely on it here."
 
 ---
 
@@ -93,7 +96,7 @@ RLAIF for the small models, DPO for the large one — and DPO can destabilise a 
 too small. And because we judged every model with an independent AI, not its own reward, the
 comparison is fair."
 
-**[STAGE: Stop, or return to the Overview page to wrap both experiments.]**
+**[STAGE: Stop.]**
 
 ---
 **Delivery notes:** the flip chart at 2:05 is the moment — pause on it. If asked why the
