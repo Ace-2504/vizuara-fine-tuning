@@ -1,0 +1,6 @@
+START set2-L4 Thu Jul 23 21:15:42 IST 2026
+┌─ Error ─────────────────────────────────────────────────────────────────────┐
+│ Workspace ac-BKxFptO6bfepuaAEannJnt has exceeded its spend limit            │
+└─────────────────────────────────────────────────────────────────────────────┘
+Note that running a local entrypoint in detached mode only keeps the last triggered Modal function alive after the parent process has been killed or disconnected.
+SET2 EXIT=1 Thu Jul 23 21:15:46 IST 2026

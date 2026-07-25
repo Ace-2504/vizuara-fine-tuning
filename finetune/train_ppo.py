@@ -2,6 +2,7 @@
 version risk): generate -> reward from RM (minus KL-to-reference penalty) -> clipped
 policy-gradient update over the generated tokens, with a batch-mean advantage baseline.
 
+    modal run train_ppo.py --model 125m      # slm-125m-sft   -> slm-125m-sft-rlaif   (full)
     modal run train_ppo.py --model 500m     # slm-500m-sft   -> slm-500m-sft-rlaif   (full)
     modal run train_ppo.py --model gemma     # gemma-2-2b-sft -> gemma-2-2b-sft-rlaif (QLoRA)
 
@@ -36,12 +37,20 @@ KL_STOP = 40.0                          # early-stop guard if the policy drifts 
 OUTER = 60                                   # rollout batches
 
 CFG = {
+    "125m":  {"gpu": "L4", "mode": "full", "render": "custom", "max_seq": 1024,
+              "ckpt": "/data/checkpoints/slm-125m-sft", "out": "/data/checkpoints/slm-125m-sft-rlaif"},
     "500m":  {"gpu": "L4", "mode": "full", "render": "custom", "max_seq": 1024,
               "ckpt": "/data/checkpoints/slm-500m-sft", "out": "/data/checkpoints/slm-500m-sft-rlaif"},
     "gemma": {"gpu": "A100-40GB", "mode": "qlora", "render": "gemma", "max_seq": 1024,
               "base": "google/gemma-2-2b-it", "adapter": "/data/checkpoints/gemma-2-2b-sft",
               "out": "/data/checkpoints/gemma-2-2b-sft-rlaif"},
 }
+
+
+@app.function(image=image, gpu="L4", volumes={"/data": vol},
+              secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 3)
+def train_125m(outer: int = 0):
+    return _run("125m", outer)
 
 
 @app.function(image=image, gpu="L4", volumes={"/data": vol},
@@ -187,5 +196,5 @@ def _run(model: str, outer: int):
 
 @app.local_entrypoint()
 def main(model: str = "500m", outer: int = 0):
-    fn = train_500m if model == "500m" else train_gemma
+    fn = {"125m": train_125m, "500m": train_500m, "gemma": train_gemma}[model]
     print(fn.remote(outer))

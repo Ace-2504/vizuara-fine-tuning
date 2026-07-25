@@ -1,0 +1,25 @@
+START judge Fri Jul 24 16:12:06 IST 2026
+judging 13 version(s) from ./eval_results (cache has 2 entries)
+  [teacher] gemini-3.1-flash -> gemini-3.1-flash-lite (status 404)
+  [base-125m] judged 500 new, wrote ./eval_results\base-125m.judged.json
+  [base-500m] judged 500 new, wrote ./eval_results\base-500m.judged.json
+  [base-gemma] judged 500 new, wrote ./eval_results\base-gemma.judged.json
+RESUME judge Fri Jul 24 17:31:06 IST 2026
+judging 13 version(s) from ./eval_results (cache has 1545 entries)
+  [base-125m] judged 0 new, wrote ./eval_results\base-125m.judged.json
+  [base-500m] judged 0 new, wrote ./eval_results\base-500m.judged.json
+  [base-gemma] judged 0 new, wrote ./eval_results\base-gemma.judged.json
+  [teacher] gemini-3.1-flash -> gemini-3.1-flash-lite (status 404)
+  [teacher] empty response after retries — skipping call
+  [gemma-2-2b-raft] judged 1956 new, wrote ./eval_results\gemma-2-2b-raft.judged.json
+  [gemma-2-2b-sft] judged 498 new, wrote ./eval_results\gemma-2-2b-sft.judged.json
+  [gemma-2-2b-sft-dpo] judged 500 new, wrote ./eval_results\gemma-2-2b-sft-dpo.judged.json
+  [gemma-2-2b-sft-rlaif] judged 500 new, wrote ./eval_results\gemma-2-2b-sft-rlaif.judged.json
+  [slm-125m-raft] judged 2000 new, wrote ./eval_results\slm-125m-raft.judged.json
+  [slm-125m-sft] judged 500 new, wrote ./eval_results\slm-125m-sft.judged.json
+  [slm-125m-sft-dpo] judged 500 new, wrote ./eval_results\slm-125m-sft-dpo.judged.json
+  [slm-125m-sft-rlaif] judged 500 new, wrote ./eval_results\slm-125m-sft-rlaif.judged.json
+  [slm-500m-sft-dpo] judged 500 new, wrote ./eval_results\slm-500m-sft-dpo.judged.json
+  [slm-500m-sft-rlaif] judged 500 new, wrote ./eval_results\slm-500m-sft-rlaif.judged.json
+judge usage: 7960 requests, 4,865,162 in / 407,007 out tokens, 8 retries, 7954 newly judged
+JUDGE_EXIT=0 Fri Jul 24 20:48:09 IST 2026

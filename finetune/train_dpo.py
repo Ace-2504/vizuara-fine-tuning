@@ -1,5 +1,6 @@
 """DPO on the QA-SFT models, on Modal. Hand-rolled DPO loss (no TRL version risk).
 
+    modal run train_dpo.py --model 125m      # slm-125m-sft   -> slm-125m-sft-dpo   (full FT)
     modal run train_dpo.py --model 500m     # slm-500m-sft   -> slm-500m-sft-dpo   (full FT)
     modal run train_dpo.py --model gemma     # gemma-2-2b-sft -> gemma-2-2b-sft-dpo (QLoRA)
 
@@ -29,6 +30,9 @@ EPOCHS = 3
 LR_FULL, LR_LORA = 5e-6, 1e-4
 
 CFG = {
+    "125m":  {"gpu": "L4", "mode": "full",  "render": "custom", "max_seq": 1024,
+              "ckpt": "/data/checkpoints/slm-125m-sft", "out": "/data/checkpoints/slm-125m-sft-dpo",
+              "micro": 4},                                    # 125M is tiny -> larger micro fits
     "500m":  {"gpu": "L4", "mode": "full",  "render": "custom", "max_seq": 1024,
               "ckpt": "/data/checkpoints/slm-500m-sft", "out": "/data/checkpoints/slm-500m-sft-dpo",
               "micro": 2},
@@ -36,6 +40,12 @@ CFG = {
               "base": "google/gemma-2-2b-it", "adapter": "/data/checkpoints/gemma-2-2b-sft",
               "out": "/data/checkpoints/gemma-2-2b-sft-dpo", "micro": 2},
 }
+
+
+@app.function(image=image, gpu="L4", volumes={"/data": vol},
+              secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 3)
+def train_125m(limit: int = 0, epochs: int = 0):
+    return _run("125m", limit, epochs)
 
 
 @app.function(image=image, gpu="L4", volumes={"/data": vol},
@@ -161,5 +171,5 @@ def _run(model: str, limit: int, epochs: int):
 
 @app.local_entrypoint()
 def main(model: str = "500m", limit: int = 0, epochs: int = 0):
-    fn = train_500m if model == "500m" else train_gemma
+    fn = {"125m": train_125m, "500m": train_500m, "gemma": train_gemma}[model]
     print(fn.remote(limit, epochs))
