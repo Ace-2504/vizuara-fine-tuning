@@ -32,6 +32,55 @@ from pydantic import BaseModel
 
 from serve_local import model_dir, build_prompt  # reuse the proven logic
 
+import sys
+sys.path.insert(0, ROOT)                         # repo root -> teacher.py (Gemini client)
+
+# --- live judging -------------------------------------------------------------------
+# Same rubric as the offline harness (evaluations/judge_eval.py): model-blind, pointwise,
+# 1-5 correctness. Two variants: with a gold REFERENCE for the frozen eval questions
+# (checkable), and reference-free for user-written questions (the judge grades against its
+# own knowledge — weaker, and labelled as such in the UI).
+JUDGE_SCHEMA = {"type": "object", "properties": {
+    "correct": {"type": "integer"},
+    "grounded": {"type": "boolean"},
+    "reason": {"type": "string"}},
+    "required": ["correct", "grounded"]}
+
+_teacher = None
+_teacher_lock = threading.Lock()
+
+
+def _get_teacher():
+    global _teacher
+    with _teacher_lock:
+        if _teacher is None:
+            from teacher import TeacherClient
+            _teacher = TeacherClient()
+        return _teacher
+
+
+def _judge_prompt(question: str, context: Optional[str], reference: Optional[str],
+                  candidate: str) -> str:
+    head = ("You are a strict evaluator of a question-answering system. Judge ONLY the "
+            "CANDIDATE answer; you do not know which system produced it.\n")
+    if reference:
+        rule = ("The REFERENCE is a correct short answer. Grade the CANDIDATE against it. "
+                "Judge meaning, not wording — a correct paraphrase scores high.\n")
+        ref_block = f"\nREFERENCE:\n{reference}\n"
+    else:
+        rule = ("No reference answer is available. Grade the CANDIDATE on factual accuracy and "
+                "whether it actually answers the question, using your own knowledge. Be strict: "
+                "vague, evasive, repetitive or fabricated answers score low.\n")
+        ref_block = ""
+    ctx_block = f"\nCONTEXT:\n{context}\n" if context else ""
+    return (head + rule +
+            '\nReturn JSON:\n- "correct" (1-5): 5 = fully correct and complete, 1 = wrong or '
+            'irrelevant.\n- "grounded" (bool): true if the answer avoids fabricated claims'
+            + (" and is supported by the CONTEXT.\n" if context else ".\n") +
+            '- "reason": one short sentence.\n'
+            + ctx_block + f"\nQUESTION:\n{question}\n" + ref_block +
+            f"\nCANDIDATE:\n{candidate}")
+
 CKPT = os.path.join(ROOT, "checkpoints")
 MAX_RESIDENT = int(os.environ.get("MAX_RESIDENT", "13"))   # 13 = pin every model, no eviction
 
@@ -403,6 +452,55 @@ def generate(r: GenReq):
         "tokens": int(out.shape[1] - ids.shape[1]),
         "seconds": round(time.time() - t0, 2),
     }
+
+
+class JudgeReq(BaseModel):
+    question: str
+    context: Optional[str] = None
+    reference: Optional[str] = None       # gold answer, when the question came from the eval set
+    answers: dict                         # model_id -> candidate answer
+
+
+@app.post("/judge")
+def judge(r: JudgeReq):
+    """Score every candidate answer with the blind LLM judge. Answers are judged in parallel
+    (network-bound), and each is scored independently — the judge never sees the model name."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    teacher = _get_teacher()      # resolve the model (and any fallback) once, before fanning out
+
+    def one(item):
+        mid, cand = item
+        cand = (cand or "").strip()
+        if not cand:
+            return mid, {"score": 0.0, "correct": 1, "grounded": False, "reason": "empty answer"}
+        prompt = _judge_prompt(r.question, r.context, r.reference, cand)
+        try:
+            out = teacher.generate_json(prompt, JUDGE_SCHEMA, temperature=0.0)
+            if not out:                                   # transient empty/unparseable -> one retry
+                out = teacher.generate_json(prompt, JUDGE_SCHEMA, temperature=0.0)
+            if not out:
+                return mid, {"error": "judge returned nothing"}
+            c = max(1, min(5, int(out.get("correct", 1))))
+            return mid, {"score": round((c - 1) / 4 * 10, 1), "correct": c,
+                         "grounded": bool(out.get("grounded", False)),
+                         "reason": (out.get("reason") or "")[:300]}
+        except Exception as e:                      # one bad call must not sink the whole run
+            return mid, {"error": f"{type(e).__name__}: {str(e)[:160]}"}
+
+    # The first call is made SERIALLY on purpose: TeacherClient only discovers a model fallback
+    # (e.g. gemini-3.1-flash -> -lite) when a request 404s, so fanning out first would send every
+    # parallel call to a stale model and only one would survive.
+    items = list(r.answers.items())
+    scored: dict = {}
+    if items:
+        mid, res = one(items[0])
+        scored[mid] = res
+        if len(items) > 1:
+            with ThreadPoolExecutor(max_workers=6) as ex:
+                scored.update(dict(ex.map(one, items[1:])))
+    return {"graded": scored, "referenced": bool(r.reference),
+            "judge_model": getattr(teacher, "model", "gemini")}
 
 
 if __name__ == "__main__":
