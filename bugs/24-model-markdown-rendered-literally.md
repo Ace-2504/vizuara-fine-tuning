@@ -44,8 +44,8 @@ displays model output uses it:
 | Arena per-model answers | `slm-arena/components/ArenaLive.tsx` |
 
 It handles what these models actually emit — `**bold**`, `__bold__`, `*italic*`, `` `code` ``,
-`*`/`-` bullet lines — and turns the RAFT `##begin_quote## … ##end_quote##` pair into a real
-quotation block instead of stray tokens.
+`*`/`-` bullet lines — and turns the RAFT evidence markers into a real quotation block instead of
+stray tokens. Getting those markers right took a second pass; see below.
 
 Two deliberate constraints:
 
@@ -53,6 +53,46 @@ Two deliberate constraints:
   surface area than the feature.
 - **No `dangerouslySetInnerHTML`.** The renderer builds React elements, so untrusted model output
   can never inject markup. This matters more than usual: the text is generated, not authored.
+
+## The second lesson: don't enumerate variants
+
+The first version of the renderer matched the markers exactly — `##begin_quote##` and
+`##end_quote##`. Testing it against live output immediately turned up debris it did not catch,
+because the sampler mangles the token constantly:
+
+```
+##end_ quote##        ##end_quotechloro##       ##end_of_quote###       ##batchmode##
+```
+
+Each fix-the-variant round caught one form and missed the next. `##batchmode##` is not even a
+quote marker — it is a hallucinated control token of the same shape.
+
+The working approach was to stop enumerating and **match the shape once, then classify**:
+
+```ts
+const HASH_MARKER   = /#{2,}(?![#\s])[^#\n]{0,40}#{1,4}/g;
+const HASH_TRAILING = /#{2,}(?![#\s])[^#\n]{0,40}$/gm;   // closing hashes dropped by the model
+
+const classify = (m: string) => (/quote/i.test(m) ? "␟" : "");   // ␟ toggles an evidence block
+```
+
+Anything of that shape mentioning "quote" toggles a quotation; any other `##…##` is sampler noise
+and is dropped. `##…##` never occurs in real prose, so the shape itself is the signal.
+
+`(?![#\s])` is load-bearing: it forces the whole run of hashes to be consumed and requires a
+non-space next character, which is exactly what separates a control token from a markdown
+`## Heading`. Without it, `#{2,}` backtracks — matching `##` of `###` — and eats real headings.
+
+Verified against the shipped source (the regexes are extracted from the file and run, rather than
+retyped into a test, after an earlier edit silently failed to apply):
+
+| input | output |
+| --- | --- |
+| `##begin_quote## e ##end_quote##` | quotation around `e` |
+| `##end_quotechloro##` / `##end_ quote##` / `##end_of_quote###` | quote boundary |
+| `##batchmode##` | removed |
+| `text ##end_quote` | quote boundary |
+| `## Heading` / `### Heading` | **unchanged** |
 
 ## Alternatives considered
 
