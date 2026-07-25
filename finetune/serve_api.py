@@ -68,6 +68,21 @@ DEV = "cuda" if torch.cuda.is_available() else "cpu"
 
 HEADROOM_GB = float(os.environ.get("HEADROOM_GB", "1.5"))   # left free for activations / KV cache
 
+# --- shared Gemma backbone ----------------------------------------------------------
+# All five Gemma entries are the SAME 2.6B weights: the base plus four LoRA adapters.
+# Loading a private copy per variant cost ~15 GB; one 4-bit base with adapters attached
+# costs ~2.4 GB. `gemma-base` is served from the same object with adapters disabled.
+# PEFT injects adapter layers INTO the base modules, so entries never cache the model
+# object — they resolve `_shared_gemma` at generation time (it gets re-wrapped on first
+# adapter attach) and switch adapters under the _gpu lock, which serialises generation.
+GEMMA_BASE_ID = "google/gemma-2-2b-it"
+_shared_gemma = None            # AutoModel, later wrapped in PeftModel
+_gemma_tok = None
+
+
+def _is_gemma(mid: str) -> bool:
+    return mid.startswith("gemma-")
+
 
 def _vram() -> float:
     return torch.cuda.memory_allocated() / 2**30 if DEV == "cuda" else 0.0
@@ -84,12 +99,13 @@ def _free_vram() -> float:
 def _estimate_gb(mid: str) -> float:
     """Rough VRAM a model will need. Loading 4-bit weights can abort the PROCESS rather than
     raise, so admission is decided BEFORE loading — a reactive except-OOM cannot save us."""
+    if _is_gemma(mid):
+        # once the shared backbone is up, another Gemma variant is just a ~40 MB adapter
+        return 0.15 if _shared_gemma is not None else 2.4
     src = CATALOG[mid]["src"]
     if not _is_local(src):                       # HF repo, not on disk yet
-        return 5.6 if "gemma" in mid else 1.2 if "500m" in mid else 0.4
+        return 1.2 if "500m" in mid else 0.4
     d = model_dir(src)
-    if os.path.exists(os.path.join(d, "adapter_config.json")):
-        return 2.4                               # 4-bit Gemma base + LoRA adapter
     try:
         b = sum(os.path.getsize(os.path.join(d, f)) for f in os.listdir(d)
                 if f.endswith((".safetensors", ".bin")))
@@ -128,6 +144,7 @@ def _evict_idle_one() -> bool:
             if DEV == "cuda":
                 torch.cuda.empty_cache()
             print(f"[evict] {mid}  vram {before:.2f} -> {_vram():.2f} GB", flush=True)
+            _drop_shared_gemma_if_unused()      # backbone lives only while a Gemma is resident
             return True
     return False
 
@@ -192,7 +209,59 @@ def _load(mid: str):
             raise HTTPException(503, f"out of GPU memory loading '{mid}'") from e
 
 
+def _load_gemma(mid: str):
+    """Build (or reuse) the one shared 4-bit Gemma backbone and attach this variant's adapter."""
+    global _shared_gemma, _gemma_tok
+    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+    tok_hf = os.environ.get("HF_TOKEN")
+    t0 = time.time()
+
+    if _shared_gemma is None:
+        print(f"[load] shared gemma backbone <- {GEMMA_BASE_ID} (4-bit)", flush=True)
+        bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                                 bnb_4bit_compute_dtype=torch.bfloat16,
+                                 bnb_4bit_use_double_quant=True)
+        _shared_gemma = AutoModelForCausalLM.from_pretrained(
+            GEMMA_BASE_ID, quantization_config=bnb, attn_implementation="eager",
+            torch_dtype=torch.bfloat16, token=tok_hf).eval()
+        _gemma_tok = AutoTokenizer.from_pretrained(GEMMA_BASE_ID, token=tok_hf)
+        print(f"[ready] shared gemma backbone in {time.time()-t0:.1f}s  vram {_vram():.2f} GB",
+              flush=True)
+
+    adapter = None
+    src = CATALOG[mid]["src"]
+    if _is_local(src):                                   # a fine-tune -> attach its adapter
+        from peft import PeftModel
+        d = model_dir(src)
+        adapter = mid
+        if not isinstance(_shared_gemma, PeftModel):
+            _shared_gemma = PeftModel.from_pretrained(_shared_gemma, d, adapter_name=adapter).eval()
+        elif adapter not in getattr(_shared_gemma, "peft_config", {}):
+            _shared_gemma.load_adapter(d, adapter_name=adapter)
+        print(f"[ready] {mid} adapter attached in {time.time()-t0:.1f}s  vram {_vram():.2f} GB",
+              flush=True)
+
+    return {"model": None, "shared_gemma": True, "adapter": adapter,
+            "tok": _gemma_tok, "family": "gemma"}
+
+
+def _drop_shared_gemma_if_unused():
+    """Free the 4-bit backbone once no Gemma variant is resident. Call holding _cv."""
+    global _shared_gemma, _gemma_tok
+    if _shared_gemma is None or any(_is_gemma(m) for m in _resident):
+        return
+    before = _vram()
+    _shared_gemma = None
+    _gemma_tok = None
+    gc.collect()
+    if DEV == "cuda":
+        torch.cuda.empty_cache()
+    print(f"[evict] shared gemma backbone  vram {before:.2f} -> {_vram():.2f} GB", flush=True)
+
+
 def _load_once(mid: str):
+        if _is_gemma(mid):
+            return _load_gemma(mid)
         src = CATALOG[mid]["src"]
         t0 = time.time()
         print(f"[load] {mid} <- {src}", flush=True)
@@ -235,7 +304,8 @@ def _load_once(mid: str):
                 model.generation_config.eos_token_id = eid
 
         print(f"[ready] {mid} ({family}) in {time.time()-t0:.1f}s  vram {_vram():.2f} GB", flush=True)
-        return (model, tok, family)          # _checkout owns registration into _resident
+        # _checkout owns registration into _resident
+        return {"model": model, "shared_gemma": False, "adapter": None, "tok": tok, "family": family}
 
 
 class GenReq(BaseModel):
@@ -283,7 +353,11 @@ def generate(r: GenReq):
     kind = CATALOG[r.model_id]["kind"]
 
     # The model stays checked out (un-evictable) for this whole block.
-    with acquire(r.model_id) as (model, tok, family):
+    with acquire(r.model_id) as entry:
+        tok, family = entry["tok"], entry["family"]
+        model = _shared_gemma if entry["shared_gemma"] else entry["model"]
+        if model is None:
+            raise HTTPException(503, f"'{r.model_id}' is no longer loaded; retry")
         if kind == "completion":
             text = (r.prompt or r.question or "").strip()
             if not text:
@@ -303,8 +377,16 @@ def generate(r: GenReq):
         eos = tok.eos_token_id if family == "gemma" else tok.convert_tokens_to_ids("<|eos|>")
         gk = {"use_cache": False} if family == "gemma" else {}
         with _gpu:                          # one generation at a time on the single GPU
+            # Adapter selection mutates shared state, so it happens under the same lock.
+            sel = contextlib.nullcontext()
+            if entry["shared_gemma"]:
+                has_adapters = hasattr(model, "peft_config")
+                if entry["adapter"]:
+                    model.set_adapter(entry["adapter"])
+                elif has_adapters:
+                    sel = model.disable_adapter()      # gemma-base off the same backbone
             try:
-                with torch.no_grad():
+                with sel, torch.no_grad():
                     out = model.generate(
                         ids, attention_mask=attn,
                         max_new_tokens=min(r.max_new_tokens, 512), do_sample=r.temperature > 0,
