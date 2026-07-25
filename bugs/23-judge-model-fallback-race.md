@@ -95,11 +95,30 @@ pricing" — [bug 09](09-cost-estimate-error.md) found the real blended Flash-Li
 choice is worth well under a dollar per full arena sweep — and moot here, since Flash is not
 offered on this key.
 
+## Follow-up — the arena judge is now pinned
+
+The concurrency fix made the fallback *safe*, but every server still burned one 404 to discover it.
+The arena judge is now pinned to Flash-Lite at construction, so the dead model is never called:
+
+```python
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "gemini-3.1-flash-lite")
+_teacher = TeacherClient(models=(JUDGE_MODEL,))
+```
+
+This also keeps the live arena on **the same judge the offline harness used**, so live scores stay
+comparable with the frozen evaluation rather than drifting because a different model graded them.
+Verified: 4/4 graded and **zero `[teacher]` fallback lines** in the server log. The serial-first
+call is deliberately kept — it costs nothing and still protects the parallel path if anyone
+re-introduces a multi-model list or overrides `JUDGE_MODEL`.
+
+`teacher.py`'s shared default tuple is left untouched, since the dataset-build and offline-judge
+paths use it on keys that may legitimately have Flash.
+
 ## Alternatives considered
 
-- **Drop `gemini-3.1-flash` from the model tuple.** Removes the 404 entirely and is the obvious
-  cleanup — but the tuple is shared with the dataset-build and offline-judge paths, and a key on a
-  different tier may well have Flash. Making the *concurrency* safe fixes it for every key.
+- **Drop `gemini-3.1-flash` from the shared tuple in `teacher.py`.** Removes the 404 for every
+  caller — but that tuple is shared with the dataset-build and offline-judge paths, and a key on a
+  different tier may well have Flash. Pinning per call-site (above) is the narrower change.
 - **Probe the model list on construction** (`client.models.list()`). One extra API round-trip on
   every server start, and it still would not settle `_idx` without changing `TeacherClient`.
 - **A lock around the first call.** Equivalent to the serial-first approach but more machinery for

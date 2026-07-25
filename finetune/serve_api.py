@@ -46,6 +46,11 @@ JUDGE_SCHEMA = {"type": "object", "properties": {
     "reason": {"type": "string"}},
     "required": ["correct", "grounded"]}
 
+# Pinned on purpose. TeacherClient's default list starts at `gemini-3.1-flash`, which this key
+# does not serve for generateContent — every run then burned a 404 to discover the fallback
+# (bugs/23). Flash-Lite is the judge the offline harness actually used, so scores stay comparable.
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "gemini-3.1-flash-lite")
+
 _teacher = None
 _teacher_lock = threading.Lock()
 
@@ -55,7 +60,7 @@ def _get_teacher():
     with _teacher_lock:
         if _teacher is None:
             from teacher import TeacherClient
-            _teacher = TeacherClient()
+            _teacher = TeacherClient(models=(JUDGE_MODEL,))
         return _teacher
 
 
