@@ -262,8 +262,6 @@ def key_findings(name, versions, data, headline):
         top = rm["order"][0]
         F.append(f"**Best model:** {META[top]['label']} — {fmt_ci(rm['means'][top])} judged correctness (clean).")
         sig = [p for p in rm["pairs"] if p[2]["significant"]]
-        F.append(f"**{len(sig)} of {len(rm['pairs'])}** pairwise comparisons are statistically resolved "
-                 f"(paired bootstrap, 95% CI excludes 0).")
         # biggest significant gap
         if sig:
             a, b, d = max(sig, key=lambda p: abs(p[2]["delta"]))
@@ -278,7 +276,8 @@ def key_findings(name, versions, data, headline):
             best = max(fmods, key=lambda v: mean_ci(list(by_key(data[v]["per_item"], headline).values()))[0])
             bb = mean_ci(list(by_key(data[best]["per_item"], headline).values()))[0]
             F.append(f"**{fam.upper()} lift:** base {b0:.3f} → best ({META[best]['label']}) {bb:.3f}.")
-    # anomaly flags
+    # anomaly flags (per model), plus one summary line about word-overlap on Gemma
+    wo_misleads_gemma = False
     for v in models:
         ab = by_key(data[v]["per_item"], "abstain", "clean")
         if ab and mean_ci(list(ab.values()))[0] > 0.3:
@@ -291,9 +290,11 @@ def key_findings(name, versions, data, headline):
         common = set(f1k) & set(jck)
         if common:
             dis = sum((f1k[k] > 0.5) != (jck[k] > 0.5) for k in common) / len(common)
-            if dis > 0.4:
-                F.append(f"**token-F1 misleads for {META[v]['label']}** (F1↔judge disagreement "
-                         f"{dis:.2f}) — trust the judge, not word-overlap.")
+            if dis > 0.4 and META.get(v, {}).get("family") == "gemma":
+                wo_misleads_gemma = True
+    if wo_misleads_gemma:
+        F.append("**Word-overlap** turned out to be an unfair judging metric for the Gemma "
+                 "models, so I switched to AI judging as my main metric.")
     return F
 
 

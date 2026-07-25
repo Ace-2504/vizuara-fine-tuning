@@ -7,12 +7,10 @@ _Headline metric = the correctness rating (1–5, rescaled to 0–1) of an indep
 ## Key findings
 
 - **Best model:** Gemma-2B SFT+DPO — 0.924 [0.906,0.942] judged correctness (clean).
-- **14 of 15** pairwise comparisons are statistically resolved (paired bootstrap, 95% CI excludes 0).
 - **Largest gap:** Gemma-2B SFT+DPO beats SLM-125M SFT+DPO by +0.871 [+0.845,+0.894].
 - **500M lift:** base 0.000 → best (SLM-500M SFT+RLAIF) 0.443.
 - ⚠️ **SLM-125M SFT+DPO collapsed** to ~2-word answers.
-- **token-F1 misleads for Gemma-2B SFT+DPO** (F1↔judge disagreement 0.91) — trust the judge, not word-overlap.
-- **token-F1 misleads for Gemma-2B SFT+RLAIF** (F1↔judge disagreement 0.88) — trust the judge, not word-overlap.
+- **Word-overlap** turned out to be an unfair judging metric for the Gemma models, so I switched to AI judging as my main metric.
 
 ==============================================================================
 ## Experiment SET2 — 7/7 versions present

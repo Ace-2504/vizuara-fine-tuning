@@ -7,13 +7,11 @@ _Headline metric = the correctness rating (1–5, rescaled to 0–1) of an indep
 ## Key findings
 
 - **Best model:** Gemma-2B RAFT — 0.975 [0.963,0.986] judged correctness (clean).
-- **5 of 6** pairwise comparisons are statistically resolved (paired bootstrap, 95% CI excludes 0).
 - **Largest gap:** Gemma-2B RAFT beats SLM-125M RAFT by +0.926 [+0.905,+0.946].
 - **125M lift:** base 0.000 → best (SLM-125M SFT) 0.261.
 - **GEMMA lift:** base 0.954 → best (Gemma-2B RAFT) 0.975.
 - ⚠️ **SLM-125M RAFT over-abstains** — says 'not stated' on 84% of *answerable* clean questions.
-- **token-F1 misleads for Gemma-2B SFT** (F1↔judge disagreement 0.45) — trust the judge, not word-overlap.
-- **token-F1 misleads for Gemma-2B RAFT** (F1↔judge disagreement 0.97) — trust the judge, not word-overlap.
+- **Word-overlap** turned out to be an unfair judging metric for the Gemma models, so I switched to AI judging as my main metric.
 
 ==============================================================================
 ## Experiment SET1 — 6/6 versions present
