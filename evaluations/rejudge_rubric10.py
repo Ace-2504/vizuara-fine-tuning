@@ -72,7 +72,7 @@ def main():
     partial = len(prior) - len(complete)
     if partial:
         print(f"retrying {partial} partially-graded question(s)", flush=True)
-    print(f"questions: {len(common)}  already done: {len(done)}  to do: {len(todo)}", flush=True)
+    print(f"questions: {len(common)}  complete: {len(complete)}  to do: {len(todo)}", flush=True)
     print(f"judge calls remaining: {len(todo) * len(MODELS)}", flush=True)
 
     ref_model = "gemma-qa"
