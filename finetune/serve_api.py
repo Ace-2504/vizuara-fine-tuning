@@ -36,15 +36,30 @@ import sys
 sys.path.insert(0, ROOT)                         # repo root -> teacher.py (Gemini client)
 
 # --- live judging -------------------------------------------------------------------
-# Same rubric as the offline harness (evaluations/judge_eval.py): model-blind, pointwise,
-# 1-5 correctness. Two variants: with a gold REFERENCE for the frozen eval questions
-# (checkable), and reference-free for user-written questions (the judge grades against its
-# own knowledge — weaker, and labelled as such in the UI).
+# Model-blind and pointwise, like the offline harness. Two variants: with a gold REFERENCE for
+# the frozen eval questions (checkable), and reference-free for user-written questions (graded
+# from the judge's own knowledge — weaker, and labelled as such in the UI).
+#
+# Composite 0-10 rubric. The offline harness returns a single integer 1-5, which maps to only
+# five possible scores (0/2.5/5/7.5/10) and looks coarse in a single-question view. Splitting the
+# judgement into four dimensions that sum to 10 gives real granularity while keeping the same
+# blind, model-agnostic framing.
 JUDGE_SCHEMA = {"type": "object", "properties": {
-    "correct": {"type": "integer"},
-    "grounded": {"type": "boolean"},
+    "correctness": {"type": "integer"},     # 0-5  factual agreement with the gold answer
+    "completeness": {"type": "integer"},    # 0-2  covers the key points, not just one
+    "groundedness": {"type": "integer"},    # 0-2  no invented cases, figures or citations
+    "clarity": {"type": "integer"},         # 0-1  answers what was asked, obeys the format
     "reason": {"type": "string"}},
-    "required": ["correct", "grounded"]}
+    "required": ["correctness", "completeness", "groundedness", "clarity"]}
+
+RUBRIC = (
+    'Score four dimensions, then nothing else:\n'
+    '- "correctness" (0-5): factual agreement with the answer. 5 = fully right, 0 = wrong.\n'
+    '- "completeness" (0-2): covers the key points, not just one of them.\n'
+    '- "groundedness" (0-2): 2 = invents nothing; 0 = fabricated figures, cases or citations.\n'
+    '- "clarity" (0-1): answers what was actually asked, without padding or contradiction.\n'
+    '- "reason": one short sentence.\n'
+    'The four add up to a score out of 10. Judge meaning, not wording.\n')
 
 # Pinned on purpose. TeacherClient's default list starts at `gemini-3.1-flash`, which this key
 # does not serve for generateContent — every run then burned a 404 to discover the fallback
@@ -78,11 +93,8 @@ def _judge_prompt(question: str, context: Optional[str], reference: Optional[str
                 "vague, evasive, repetitive or fabricated answers score low.\n")
         ref_block = ""
     ctx_block = f"\nCONTEXT:\n{context}\n" if context else ""
-    return (head + rule +
-            '\nReturn JSON:\n- "correct" (1-5): 5 = fully correct and complete, 1 = wrong or '
-            'irrelevant.\n- "grounded" (bool): true if the answer avoids fabricated claims'
-            + (" and is supported by the CONTEXT.\n" if context else ".\n") +
-            '- "reason": one short sentence.\n'
+    ground = ("Groundedness is judged against the CONTEXT.\n" if context else "")
+    return (head + rule + "\n" + RUBRIC + ground
             + ctx_block + f"\nQUESTION:\n{question}\n" + ref_block +
             f"\nCANDIDATE:\n{candidate}")
 
@@ -379,6 +391,33 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def _private_network(request, call_next):
+    """Let an HTTPS page (the deployed sites) call this loopback server.
+
+    Browsers treat http://127.0.0.1 as a trustworthy origin, so this is not blocked as mixed
+    content — but Chrome's Private Network Access check sends
+    `Access-Control-Request-Private-Network: true` on the preflight and requires the server to
+    opt in. Starlette's CORSMiddleware does not know that header and rejects the whole preflight
+    with 400 "Disallowed CORS private-network", so the preflight is answered here instead — this
+    middleware is registered last and therefore runs outermost, ahead of CORSMiddleware.
+    """
+    from starlette.responses import Response
+    if (request.method == "OPTIONS"
+            and request.headers.get("access-control-request-private-network") == "true"):
+        return Response(status_code=200, headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers":
+                request.headers.get("access-control-request-headers", "content-type"),
+            "Access-Control-Allow-Private-Network": "true",
+            "Access-Control-Max-Age": "600",
+        })
+    resp = await call_next(request)
+    resp.headers["Access-Control-Allow-Private-Network"] = "true"
+    return resp
+
+
 @app.get("/health")
 def health():
     return {
@@ -478,7 +517,7 @@ def judge(r: JudgeReq):
         mid, cand = item
         cand = (cand or "").strip()
         if not cand:
-            return mid, {"score": 0.0, "correct": 1, "grounded": False, "reason": "empty answer"}
+            return mid, {"score": 0.0, "parts": {"correctness": 0, "completeness": 0, "groundedness": 0, "clarity": 0}, "grounded": False, "reason": "empty answer"}
         prompt = _judge_prompt(r.question, r.context, r.reference, cand)
         try:
             out = teacher.generate_json(prompt, JUDGE_SCHEMA, temperature=0.0)
@@ -486,9 +525,15 @@ def judge(r: JudgeReq):
                 out = teacher.generate_json(prompt, JUDGE_SCHEMA, temperature=0.0)
             if not out:
                 return mid, {"error": "judge returned nothing"}
-            c = max(1, min(5, int(out.get("correct", 1))))
-            return mid, {"score": round((c - 1) / 4 * 10, 1), "correct": c,
-                         "grounded": bool(out.get("grounded", False)),
+            def clamp(k, hi):
+                try:
+                    return max(0, min(hi, int(out.get(k, 0))))
+                except (TypeError, ValueError):
+                    return 0
+            parts = {"correctness": clamp("correctness", 5), "completeness": clamp("completeness", 2),
+                     "groundedness": clamp("groundedness", 2), "clarity": clamp("clarity", 1)}
+            return mid, {"score": float(sum(parts.values())), "parts": parts,
+                         "grounded": parts["groundedness"] == 2,
                          "reason": (out.get("reason") or "")[:300]}
         except Exception as e:                      # one bad call must not sink the whole run
             return mid, {"error": f"{type(e).__name__}: {str(e)[:160]}"}
