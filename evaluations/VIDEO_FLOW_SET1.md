@@ -1,7 +1,7 @@
-# VIDEO SCRIPT — Set 1 (base vs SFT vs RAFT) · ~5 minutes
+# VIDEO SCRIPT — Set 1 (base vs SFT vs RAFT) · ~5–6 minutes (incl. live-arena demo)
 
 A complete read-aloud script. **[STAGE: …]** tells you what to show; **SAY:** is the exact
-words to read. Pace is ~150 words/min; the whole thing is ~5 minutes. Live page:
+words to read. Pace is ~150 words/min; the whole thing is ~5–6 minutes with the live-arena demo. Live page:
 **https://reportsite-jade.vercel.app/set1**
 
 ---
@@ -96,8 +96,30 @@ outputs."
 
 ---
 
-### 4:30–5:00 · Close
-**[STAGE: Scroll to the “Ranking & which differences are real” section.]**
+### 4:30–5:15 · See it live — the SLM Arena
+**[STAGE: Open the SLM Arena — https://slm-arena-harman.vercel.app — on the Arena tab.
+Pick a held-out question from the list and click “Ask all 13 & judge”.]**
+
+**SAY:** "Everything so far has been the finished numbers. Here's the same evaluation running
+*live*. This is my SLM Arena — I pick one of the held-out questions, every model answers it in
+real time, and a blind judge — the same gemini-3.1-flash-lite, handed the gold answer — scores
+each one on the spot. Watch the 125-million base model produce almost nothing, its fine-tuned
+SFT version give a clean, correct answer, and the RAFT version do the same. That
+base-versus-fine-tuned gap from the bar chart is happening right in front of you, on a question
+none of these models were trained on."
+
+**[STAGE: (optional) Click the Leaderboard tab and point at the caption under the heading.]**
+
+**SAY (optional):** "There's also a combined leaderboard of all my models here. One thing to
+flag if you show it: it scores on a richer zero-to-ten rubric — correctness, completeness,
+groundedness and clarity — so those numbers sit on a different scale than this experiment's
+chart. The caption underneath explains it: same questions, same answers, same judge, just a
+different scoring lens."
+
+---
+
+### 5:15–5:45 · Close
+**[STAGE: Go back to the Set 1 page — the “Ranking & which differences are real” section.]**
 
 **SAY:** "So, three findings from Set 1. First, plain fine-tuning is what makes a tiny model
 usable at all. Second, teaching it to refuse backfires at small scale — it becomes too timid.
@@ -105,7 +127,7 @@ And third, size dominates everything: the 2-billion model beats the 125-million 
 recipe, and every one of those gaps passed a statistical significance test. The takeaway —
 fine-tuning is essential, refusal-training is a trap at small scale, and scale still wins."
 
-**[STAGE: Click through to /set2 if recording both back-to-back, otherwise stop.]**
+**[STAGE: Stop.]**
 
 ---
 **Delivery notes:** speak the amber-vs-grey contrast slowly — it's the one visual people

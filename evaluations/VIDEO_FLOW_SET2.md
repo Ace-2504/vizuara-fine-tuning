@@ -1,7 +1,7 @@
-# VIDEO SCRIPT — Set 2 (alignment: DPO vs RLAIF) · ~5 minutes
+# VIDEO SCRIPT — Set 2 (alignment: DPO vs RLAIF) · ~5–6 minutes (incl. live-arena demo)
 
 A complete read-aloud script. **[STAGE: …]** tells you what to show; **SAY:** is the exact
-words to read. Pace ~150 words/min; ~5 minutes total. Live page:
+words to read. Pace ~150 words/min; ~5–6 minutes total with the live-arena demo. Live page:
 **https://reportsite-jade.vercel.app/set2**
 
 ---
@@ -90,7 +90,27 @@ numbers concrete."
 
 ---
 
-### 4:50–5:00 · Close
+### 4:50–5:35 · See it live — the SLM Arena
+**[STAGE: Open the SLM Arena — https://slm-arena-harman.vercel.app — on the Arena tab.
+Pick a held-out question and click “Ask all 13 & judge”.]**
+
+**SAY:** "Here's the same evaluation *live*. This is my SLM Arena — I ask a held-out question
+and every model answers in real time, then a blind judge, gemini-3.1-flash-lite, scores each
+answer against the gold answer. Look at the two 125-million alignment models side by side: the
+DPO version giving a two-word non-answer while the RLAIF version actually attempts the
+question — the collapse from the chart, live — and the Gemma models answering fully. It's the
+same story you just saw in the numbers, on a fresh question none of them were trained on."
+
+**[STAGE: (optional) Click the Leaderboard tab and point at the caption under the heading.]**
+
+**SAY (optional):** "There's a combined leaderboard of all my models here too. If you show it:
+it uses a zero-to-ten four-dimension rubric — a different scale than this experiment's chart —
+and the caption under it explains that it's the same questions, answers and judge, just scored
+a different way."
+
+---
+
+### 5:35–5:45 · Close
 **SAY:** "So, Set 2 in one line: alignment helps, but the best method flips with model size —
 RLAIF for the small models, DPO for the large one — and DPO can destabilise a model that's
 too small. And because we judged every model with an independent AI, not its own reward, the
