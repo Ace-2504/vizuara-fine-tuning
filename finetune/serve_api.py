@@ -12,7 +12,7 @@ Gemma cache workaround).
     POST /generate        -> {model_id, prompt|question, context?, max_new_tokens?, temperature?...}
 """
 from __future__ import annotations
-import gc, os, threading, time
+import contextlib, gc, os, threading, time
 from collections import OrderedDict
 from typing import Optional
 
@@ -33,7 +33,7 @@ from pydantic import BaseModel
 from serve_local import model_dir, build_prompt  # reuse the proven logic
 
 CKPT = os.path.join(ROOT, "checkpoints")
-MAX_RESIDENT = int(os.environ.get("MAX_RESIDENT", "2"))
+MAX_RESIDENT = int(os.environ.get("MAX_RESIDENT", "13"))   # 13 = pin every model, no eviction
 
 # frontend model id -> (checkpoint dir or HF repo, demo kind)
 #   kind: "completion" = base completer, "qa" = question answering, "grounded" = context+question
@@ -53,9 +53,49 @@ CATALOG = {
     "gemma-rlaif": {"src": os.path.join(CKPT, "gemma-2-2b-sft-rlaif"),"kind": "qa",       "label": "Gemma 2 2B · RLAIF"},
 }
 
-_lock = threading.Lock()
-_resident: "OrderedDict[str, tuple]" = OrderedDict()   # id -> (model, tok, family)
+# --- concurrency model -------------------------------------------------------------
+# _cv guards _resident and _inuse. A model is only evictable while _inuse[mid] == 0, so a
+# request that is mid-generation can never have its weights pulled out from under it.
+# Generation itself is serialised by _gpu: there is one GPU, so overlapping generations
+# would only interleave and double peak VRAM.
+_cv = threading.Condition()
+_resident: "OrderedDict[str, tuple]" = OrderedDict()   # id -> (model, tok, family), LRU order
+_inuse: dict = {}                                      # id -> in-flight request count
+_gpu = threading.Semaphore(1)
+BUSY_WAIT_S = float(os.environ.get("BUSY_WAIT_S", "180"))   # wait for a free slot before 503
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+HEADROOM_GB = float(os.environ.get("HEADROOM_GB", "1.5"))   # left free for activations / KV cache
+
+
+def _vram() -> float:
+    return torch.cuda.memory_allocated() / 2**30 if DEV == "cuda" else 0.0
+
+
+def _free_vram() -> float:
+    """Free VRAM as the driver sees it — includes memory held by other processes."""
+    if DEV != "cuda":
+        return 1e9
+    free, _total = torch.cuda.mem_get_info()
+    return free / 2**30
+
+
+def _estimate_gb(mid: str) -> float:
+    """Rough VRAM a model will need. Loading 4-bit weights can abort the PROCESS rather than
+    raise, so admission is decided BEFORE loading — a reactive except-OOM cannot save us."""
+    src = CATALOG[mid]["src"]
+    if not _is_local(src):                       # HF repo, not on disk yet
+        return 5.6 if "gemma" in mid else 1.2 if "500m" in mid else 0.4
+    d = model_dir(src)
+    if os.path.exists(os.path.join(d, "adapter_config.json")):
+        return 2.4                               # 4-bit Gemma base + LoRA adapter
+    try:
+        b = sum(os.path.getsize(os.path.join(d, f)) for f in os.listdir(d)
+                if f.endswith((".safetensors", ".bin")))
+        return max(b / 2**30 * 1.05, 0.2)
+    except OSError:
+        return 1.0
 
 
 def _is_local(src: str) -> bool:
@@ -71,29 +111,89 @@ def available(mid: str) -> bool:
            os.path.exists(os.path.join(d, "adapter_config.json"))
 
 
-def _evict_one():
-    mid, (model, tok, fam) = _resident.popitem(last=False)
-    print(f"[evict] {mid}", flush=True)
-    del model, tok
-    gc.collect()
-    if DEV == "cuda":
-        torch.cuda.empty_cache()
+def _evict_idle_one() -> bool:
+    """Evict the least-recently-used model that has NO in-flight request. Call holding _cv.
+
+    Returns False when every resident model is busy — the caller then waits rather than
+    loading anyway, because an 'eviction' of an in-use model frees no VRAM (the serving
+    thread still holds a reference) and would silently over-commit the GPU.
+    """
+    for mid in list(_resident.keys()):                 # LRU order
+        if _inuse.get(mid, 0) == 0:
+            before = _vram()
+            entry = _resident.pop(mid)
+            _inuse.pop(mid, None)
+            del entry
+            gc.collect()
+            if DEV == "cuda":
+                torch.cuda.empty_cache()
+            print(f"[evict] {mid}  vram {before:.2f} -> {_vram():.2f} GB", flush=True)
+            return True
+    return False
 
 
-def get_model(mid: str):
-    """Load (or reuse) a model, evicting the least-recently-used when at capacity."""
-    with _lock:
-        if mid in _resident:
-            _resident.move_to_end(mid)
-            return _resident[mid]
+@contextlib.contextmanager
+def acquire(mid: str):
+    """Check a model out for the duration of one request; it cannot be evicted meanwhile."""
+    entry = _checkout(mid)
+    try:
+        yield entry
+    finally:
+        with _cv:
+            _inuse[mid] = max(0, _inuse.get(mid, 0) - 1)
+            _cv.notify_all()
 
+
+def _checkout(mid: str):
+    deadline = time.time() + BUSY_WAIT_S
+    with _cv:
+        while True:
+            if mid in _resident:
+                _resident.move_to_end(mid)
+                _inuse[mid] = _inuse.get(mid, 0) + 1
+                return _resident[mid]
+
+            src = CATALOG[mid]["src"]
+            if _is_local(src) and not available(mid):
+                raise HTTPException(503, f"weights for '{mid}' are not downloaded yet ({src})")
+
+            # Admission control: make room by COUNT and by actual free VRAM before loading.
+            need = _estimate_gb(mid) + HEADROOM_GB
+            if len(_resident) >= MAX_RESIDENT or _free_vram() < need:
+                if _evict_idle_one():
+                    continue                            # freed something; re-evaluate
+                left = deadline - time.time()
+                if left <= 0:
+                    if _free_vram() < need and _resident:
+                        raise HTTPException(
+                            503, f"not enough GPU memory for '{mid}': needs ~{need:.1f} GB, "
+                                 f"{_free_vram():.1f} GB free, and all resident models are busy")
+                    raise HTTPException(503, f"all {len(_resident)} resident models are busy")
+                _cv.wait(timeout=min(left, 5.0))
+                continue                                # re-check: it may now be loaded/free
+
+            entry = _load(mid)
+            _resident[mid] = entry
+            _inuse[mid] = 1
+            return entry
+
+
+def _load(mid: str):
+    """Load with an out-of-memory safety net. Call holding _cv."""
+    try:
+        return _load_once(mid)
+    except torch.cuda.OutOfMemoryError:
+        print(f"[oom] loading {mid} — dropping idle models and retrying", flush=True)
+        while _evict_idle_one():
+            pass
+        try:
+            return _load_once(mid)
+        except torch.cuda.OutOfMemoryError as e:
+            raise HTTPException(503, f"out of GPU memory loading '{mid}'") from e
+
+
+def _load_once(mid: str):
         src = CATALOG[mid]["src"]
-        if _is_local(src) and not available(mid):
-            raise HTTPException(503, f"weights for '{mid}' are not downloaded yet ({src})")
-
-        while len(_resident) >= MAX_RESIDENT:
-            _evict_one()
-
         t0 = time.time()
         print(f"[load] {mid} <- {src}", flush=True)
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -134,9 +234,8 @@ def get_model(mid: str):
                 model.config.eos_token_id = eid
                 model.generation_config.eos_token_id = eid
 
-        print(f"[ready] {mid} ({family}) in {time.time()-t0:.1f}s", flush=True)
-        _resident[mid] = (model, tok, family)
-        return _resident[mid]
+        print(f"[ready] {mid} ({family}) in {time.time()-t0:.1f}s  vram {_vram():.2f} GB", flush=True)
+        return (model, tok, family)          # _checkout owns registration into _resident
 
 
 class GenReq(BaseModel):
@@ -163,6 +262,10 @@ def health():
         "gpu": torch.cuda.get_device_name(0) if DEV == "cuda" else None,
         "max_resident": MAX_RESIDENT,
         "resident": list(_resident.keys()),
+        "in_use": {k: v for k, v in _inuse.items() if v},
+        "vram_allocated_gb": round(_vram(), 2),
+        "vram_reserved_gb": round(torch.cuda.memory_reserved() / 2**30, 2) if DEV == "cuda" else 0,
+        "vram_total_gb": round(torch.cuda.get_device_properties(0).total_memory / 2**30, 2) if DEV == "cuda" else 0,
         "models": len(CATALOG),
     }
 
@@ -178,34 +281,41 @@ def generate(r: GenReq):
     if r.model_id not in CATALOG:
         raise HTTPException(404, f"unknown model '{r.model_id}'")
     kind = CATALOG[r.model_id]["kind"]
-    model, tok, family = get_model(r.model_id)
 
-    if kind == "completion":
-        text = (r.prompt or r.question or "").strip()
-        if not text:
-            raise HTTPException(400, "prompt required")
-        full = text
-    else:
-        q = (r.question or r.prompt or "").strip()
-        if not q:
-            raise HTTPException(400, "question required")
-        full = build_prompt(tok, family, q, r.context)
+    # The model stays checked out (un-evictable) for this whole block.
+    with acquire(r.model_id) as (model, tok, family):
+        if kind == "completion":
+            text = (r.prompt or r.question or "").strip()
+            if not text:
+                raise HTTPException(400, "prompt required")
+            full = text
+        else:
+            q = (r.question or r.prompt or "").strip()
+            if not q:
+                raise HTTPException(400, "question required")
+            full = build_prompt(tok, family, q, r.context)
 
-    t0 = time.time()
-    enc = tok(full, return_tensors="pt",
-              add_special_tokens=(family == "gemma" and kind != "completion"))
-    ids = enc.input_ids.to(DEV)
-    attn = enc.attention_mask.to(DEV)      # explicit: pad and eos share an id on the custom models
-    eos = tok.eos_token_id if family == "gemma" else tok.convert_tokens_to_ids("<|eos|>")
-    gk = {"use_cache": False} if family == "gemma" else {}
-    with torch.no_grad():
-        out = model.generate(
-            ids, attention_mask=attn,
-            max_new_tokens=min(r.max_new_tokens, 512), do_sample=r.temperature > 0,
-            temperature=max(r.temperature, 1e-5), top_p=r.top_p, top_k=r.top_k,
-            no_repeat_ngram_size=3, repetition_penalty=1.2,
-            pad_token_id=tok.pad_token_id or eos, eos_token_id=eos, **gk)
-    completion = tok.decode(out[0, ids.shape[1]:], skip_special_tokens=True).strip()
+        t0 = time.time()
+        enc = tok(full, return_tensors="pt",
+                  add_special_tokens=(family == "gemma" and kind != "completion"))
+        ids = enc.input_ids.to(DEV)
+        attn = enc.attention_mask.to(DEV)  # explicit: pad and eos share an id on the custom models
+        eos = tok.eos_token_id if family == "gemma" else tok.convert_tokens_to_ids("<|eos|>")
+        gk = {"use_cache": False} if family == "gemma" else {}
+        with _gpu:                          # one generation at a time on the single GPU
+            try:
+                with torch.no_grad():
+                    out = model.generate(
+                        ids, attention_mask=attn,
+                        max_new_tokens=min(r.max_new_tokens, 512), do_sample=r.temperature > 0,
+                        temperature=max(r.temperature, 1e-5), top_p=r.top_p, top_k=r.top_k,
+                        no_repeat_ngram_size=3, repetition_penalty=1.2,
+                        pad_token_id=tok.pad_token_id or eos, eos_token_id=eos, **gk)
+            except torch.cuda.OutOfMemoryError as e:
+                if DEV == "cuda":
+                    torch.cuda.empty_cache()
+                raise HTTPException(503, f"out of GPU memory generating with '{r.model_id}'") from e
+        completion = tok.decode(out[0, ids.shape[1]:], skip_special_tokens=True).strip()
     return {
         "model_id": r.model_id, "kind": kind, "completion": completion,
         "tokens": int(out.shape[1] - ids.shape[1]),
