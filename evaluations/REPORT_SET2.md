@@ -2,7 +2,7 @@
 
 _Detailed evaluation report — this experiment stands alone; no numbers are compared against the other set._
 
-_Headline metric = an independent LLM judge's correctness (1–5, rescaled to 0–1), which is fair across the 125M / 500M / Gemma tokenizers and — unlike the reward model — is not the RLAIF training objective. token-F1 is reported alongside as a lexical proxy. Every model-vs-model claim uses a **paired bootstrap** on the same eval items (a difference counts only when the delta's 95% CI excludes 0); overlapping per-model CIs are never used as a test. All models scored on one decontaminated, held-out eval set (500 pair_ids × 4 RAFT conditions)._
+_Headline metric = the correctness rating (1–5, rescaled to 0–1) of an independent LLM judge — Google's **gemini-3.1-flash-lite**, blind to which model wrote each answer — which is fair across the 125M / 500M / Gemma tokenizers and — unlike the reward model — is not the RLAIF training objective. token-F1 is reported alongside as a lexical proxy. Every model-vs-model claim uses a **paired bootstrap** on the same eval items (a difference counts only when the delta's 95% CI excludes 0); overlapping per-model CIs are never used as a test. All models scored on one decontaminated, held-out eval set (500 pair_ids × 4 RAFT conditions)._
 
 ## Key findings
 

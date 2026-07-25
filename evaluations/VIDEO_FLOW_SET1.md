@@ -36,7 +36,7 @@ there. So the question underneath is: does fine-tuning help, and does teaching t
 Point at the amber bars.]**
 
 **SAY:** "This chart is the heart of it. For every model, the amber bar shows how often an
-independent AI judge rated its answer correct — from zero to one. Look at the two Gemma-2B
+independent AI judge — Google's gemini-3.1-flash-lite — rated its answer correct, from zero to one. Look at the two Gemma-2B
 models near the bottom: their bars are almost full, around 0.95 to 0.97. Now look at the
 125M models at the top — much shorter. The single biggest finding of Set 1 is simply that
 **model size dominates**. The 2-billion model is in a different league from the 125-million

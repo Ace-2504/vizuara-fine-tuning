@@ -31,7 +31,7 @@ Gemma. The question is: does alignment help, and is DPO or RLAIF better?"
 **[STAGE: Scroll to the first chart, “AI-judged correctness vs word-overlap.” Point at the
 amber bars, top to bottom.]**
 
-**SAY:** "Same setup as before — the amber bar is how often the independent AI judge rated
+**SAY:** "Same setup as before — the amber bar is how often the independent AI judge — Google's gemini-3.1-flash-lite — rated
 each model correct. And the same headline jumps out: **size dominates**. The two Gemma models
 score around 0.9; the 500-million models sit near 0.3 to 0.44; the 125-million models are
 lowest. The grey bars are the older word-overlap score — and just like in Set 1, notice how
