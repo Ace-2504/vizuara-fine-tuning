@@ -9,7 +9,7 @@ Live page: **https://reportsite-jade.vercel.app/set2**
 ### 0:00–0:50 · Greeting & who I am
 **[STAGE: On camera (or with the Set 2 page open) — https://reportsite-jade.vercel.app/set2.]**
 
-**SAY:** "Good day, Dr. Sreedath Panat — sir, thank you again for this bootcamp; the depth of it
+**SAY:** "Hello, Dr. Sreedath Panat — sir, thank you again for this bootcamp; the depth of it
 has pushed me to build things I didn't think I could. I'm Harman Sandhu, a third-semester
 Computer Science student based in the NCR region, and this is the recording of my Assignment 2
 video, where I'll take you through the performance comparison of the small language models I
