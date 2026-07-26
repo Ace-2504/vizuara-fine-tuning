@@ -1,0 +1,9 @@
+{
+  "workspace": "singh1621",
+  "source": "dashboard screenshot — Ephemeral App Breakdown (showing 3 of 3)",
+  "apps": [
+    {"app": "modal_train_e4.train",       "usd": 28.25},
+    {"app": "<image build>",              "usd": 0.01},
+    {"app": "modal_export_v1ext.export",  "usd": 0.00}
+  ]
+}

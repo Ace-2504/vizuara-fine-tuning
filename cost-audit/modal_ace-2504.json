@@ -1,0 +1,18 @@
+{
+  "workspace": "ace-2504",
+  "source": "dashboard screenshot — Ephemeral App Breakdown (showing 12 of 12)",
+  "apps": [
+    {"app": "modal_train.pretrain",                  "usd": 11.54},
+    {"app": "train_gemma.train",                     "usd": 11.41},
+    {"app": "modal_continue_train.continue_train",   "usd": 2.88},
+    {"app": "train_500m.train",                      "usd": 2.67},
+    {"app": "modal_sft.train",                       "usd": 1.66},
+    {"app": "modal_phase0_probe.probe",              "usd": 0.18},
+    {"app": "<image build>",                         "usd": 0.02},
+    {"app": "modal_smoketest.check",                 "usd": 0.00},
+    {"app": "export_sft_hf.export",                  "usd": 0.00},
+    {"app": "modal_export_v1ext.export",             "usd": 0.00},
+    {"app": "modal_export_hf.export",                "usd": 0.00},
+    {"app": "modal_export_v1ext.verify",             "usd": 0.00}
+  ]
+}

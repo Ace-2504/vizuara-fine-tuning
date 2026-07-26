@@ -1,0 +1,17 @@
+{
+  "workspace": "ace-compoz",
+  "source": "dashboard screenshot — Ephemeral App Breakdown (showing 11 of 11)",
+  "apps": [
+    {"app": "eval.evaluate",          "usd": 19.19},
+    {"app": "train_gemma.train",      "usd": 5.25},
+    {"app": "train_ppo.train_gemma",  "usd": 4.23},
+    {"app": "train_125m.train",       "usd": 0.61},
+    {"app": "train_dpo.train_gemma",  "usd": 0.43},
+    {"app": "train_ppo.train_500m",   "usd": 0.33},
+    {"app": "train_ppo.train_125m",   "usd": 0.08},
+    {"app": "train_dpo.train_500m",   "usd": 0.08},
+    {"app": "train_reward.train",     "usd": 0.06},
+    {"app": "train_dpo.train_125m",   "usd": 0.02},
+    {"app": "<image build>",          "usd": 0.01}
+  ]
+}
