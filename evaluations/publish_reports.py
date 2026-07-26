@@ -187,11 +187,11 @@ def per_version_table(name):
     note = ""
     if name == "set2":
         note = ('<p class="note"><b>About the reward column.</b> A secondary score from a separate '
-                '“reward model” (built on the 500M model). <b>DPO</b> models show their score; '
-                '<b>RLAIF</b> models show <b>“omitted*”</b> because they were <i>trained</i> to '
-                'maximise this exact reward, so scoring them with it would be circular; <b>Gemma</b> '
-                'shows <b>“n/a”</b> because the reward model is a different model family and its '
-                'scores are not comparable. It is a side-signal only — the AI judge is the headline.</p>')
+                '“reward model” (built on the 500M model). <b>DPO</b> and <b>base</b> models show '
+                'their score; <b>RLAIF</b> models show <b>“omitted*”</b> because they were '
+                '<i>trained</i> to maximise this exact reward, so scoring them with it would be '
+                'circular. Because the reward model was built on the 500M model, its scores are most '
+                'meaningful within that family. It is a side-signal only — the AI judge is the headline.</p>')
     return (f"<h2>Full scores</h2><div class=tw><table><thead><tr><th>model</th>{th}</tr></thead>"
             f"<tbody>{''.join(body)}</tbody></table></div>{note}{links}")
 

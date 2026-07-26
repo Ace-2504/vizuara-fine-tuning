@@ -24,7 +24,7 @@ _Headline metric = the correctness rating (1–5, rescaled to 0–1) of an indep
 | SLM-125M SFT+RLAIF | 0.271 [0.238,0.304] | 0.446 [0.402,0.490] | 0.178 [0.144,0.212] | 0.245 [0.222,0.268] | 0.064 [0.042,0.086] | 0.000 [0.000,0.000] | 9w | circular — omitted |
 | SLM-500M SFT+DPO | 0.279 [0.245,0.313] | 0.462 [0.418,0.504] | 0.198 [0.162,0.234] | 0.224 [0.204,0.246] | 0.066 [0.044,0.088] | 0.004 [0.000,0.010] | 15w | -0.162 [-0.211,-0.118] |
 | SLM-500M SFT+RLAIF | 0.443 [0.406,0.480] | 0.648 [0.606,0.690] | 0.332 [0.290,0.374] | 0.367 [0.340,0.394] | 0.014 [0.004,0.026] | 0.000 [0.000,0.000] | 8w | circular — omitted |
-| Gemma-2B SFT+DPO | 0.924 [0.906,0.942] | 0.906 [0.880,0.930] | 0.934 [0.910,0.956] | 0.149 [0.140,0.158] | 0.042 [0.026,0.060] | 0.162 [0.130,0.194] | 101w | n/a |
+| Gemma-2B SFT+DPO | 0.924 [0.906,0.942] | 0.906 [0.880,0.930] | 0.934 [0.910,0.956] | 0.149 [0.140,0.158] | 0.042 [0.026,0.060] | 0.162 [0.130,0.194] | 101w | 0.100 [0.042,0.158] |
 | Gemma-2B SFT+RLAIF | 0.899 [0.878,0.918] | 0.856 [0.824,0.886] | 0.916 [0.892,0.940] | 0.115 [0.109,0.121] | 0.294 [0.256,0.334] | 0.006 [0.000,0.014] | 113w | circular — omitted |
 
 _Reward is a SECONDARY signal from a 500M-backbone reward model — meaningful only WITHIN a family, never across families, and shown next to median length because reward models favour longer answers. The judge is the headline (caveat 6)._
