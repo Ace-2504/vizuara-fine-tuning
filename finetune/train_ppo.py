@@ -26,7 +26,6 @@ image = (
 )
 
 PREFS = "/data/rl/preferences.jsonl"
-RM = "/data/checkpoints/reward-500m"
 GEN_TOK = 96
 KL_COEF = 0.15
 CLIP = 0.2
@@ -37,46 +36,58 @@ KL_STOP = 40.0                          # early-stop guard if the policy drifts 
 OUTER = 60                                   # rollout batches
 
 CFG = {
-    "125m":  {"gpu": "L4", "mode": "full", "render": "custom", "max_seq": 1024,
+    "125m":  {"gpu": "L4", "mode": "full", "render": "custom", "max_seq": 1024, "name": "slm-125m",
               "ckpt": "/data/checkpoints/slm-125m-sft", "out": "/data/checkpoints/slm-125m-sft-rlaif"},
-    "500m":  {"gpu": "L4", "mode": "full", "render": "custom", "max_seq": 1024,
+    "500m":  {"gpu": "L4", "mode": "full", "render": "custom", "max_seq": 1024, "name": "slm-500m",
               "ckpt": "/data/checkpoints/slm-500m-sft", "out": "/data/checkpoints/slm-500m-sft-rlaif"},
-    "gemma": {"gpu": "A100-40GB", "mode": "qlora", "render": "gemma", "max_seq": 1024,
+    "gemma": {"gpu": "A100-40GB", "mode": "qlora", "render": "gemma", "max_seq": 1024, "name": "gemma-2-2b",
               "base": "google/gemma-2-2b-it", "adapter": "/data/checkpoints/gemma-2-2b-sft",
               "out": "/data/checkpoints/gemma-2-2b-sft-rlaif"},
 }
 
 
-@app.function(image=image, gpu="L4", volumes={"/data": vol},
-              secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 3)
-def train_125m(outer: int = 0):
-    return _run("125m", outer)
+def _seed_paths(cfg, seed):
+    """Multi-seed: policy init from the SEEDED SFT (*-sft-seed{seed}) -> *-sft-rlaif-seed{seed}.
+    Leaves the original published checkpoints untouched. Returns a shallow-copied cfg."""
+    name = cfg["name"]
+    sft = f"/data/checkpoints/{name}-sft-seed{seed}"
+    cfg = {**cfg, "out": f"/data/checkpoints/{name}-sft-rlaif-seed{seed}"}
+    cfg["ckpt" if cfg["mode"] == "full" else "adapter"] = sft
+    return cfg
 
 
 @app.function(image=image, gpu="L4", volumes={"/data": vol},
               secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 3)
-def train_500m(outer: int = 0):
-    return _run("500m", outer)
+def train_125m(outer: int = 0, seed: int = C.SEED):
+    return _run("125m", outer, seed)
+
+
+@app.function(image=image, gpu="L4", volumes={"/data": vol},
+              secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 3)
+def train_500m(outer: int = 0, seed: int = C.SEED):
+    return _run("500m", outer, seed)
 
 
 @app.function(image=image, gpu="A100-40GB", volumes={"/data": vol},
               secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 5)
-def train_gemma(outer: int = 0):
-    return _run("gemma", outer)
+def train_gemma(outer: int = 0, seed: int = C.SEED):
+    return _run("gemma", outer, seed)
 
 
-def _run(model: str, outer: int):
+def _run(model: str, outer: int, seed: int = C.SEED):
     import json, os, time, random
     import torch, torch.nn.functional as F
     from transformers import (AutoModelForCausalLM, AutoTokenizer,
                               AutoModelForSequenceClassification)
     import ft_data as D
 
-    cfg = CFG[model]; n_outer = outer or OUTER
+    cfg = _seed_paths(CFG[model], seed); n_outer = outer or OUTER
+    RM = f"/data/checkpoints/reward-500m-seed{seed}"             # seeded reward model
     rollout_bs = ROLLOUT_BS if cfg["mode"] == "full" else 4       # gemma logits are 256k-wide
     kl_coef = 0.15 if cfg["mode"] == "full" else 0.4              # gemma needs a firmer KL anchor
-    torch.manual_seed(C.SEED); dev = "cuda"
+    torch.manual_seed(seed); dev = "cuda"
     token = os.environ.get("HF_TOKEN")
+    print(f"[ppo/{model}] seed={seed} init={cfg.get('ckpt') or cfg.get('adapter')} rm={RM} out={cfg['out']}", flush=True)
 
     # ---- policy + frozen reference ----
     if cfg["mode"] == "full":
@@ -115,7 +126,7 @@ def _run(model: str, outer: int):
     rm.config.pad_token_id = rm_tok.convert_tokens_to_ids("<|pad|>")
 
     rows = [json.loads(l) for l in open(PREFS, encoding="utf-8") if l.strip()]
-    rng = random.Random(C.SEED)
+    rng = random.Random(seed)
 
     def prompt_ids(r):
         # render prompt only (no answer) -> generation prefix
@@ -195,6 +206,6 @@ def _run(model: str, outer: int):
 
 
 @app.local_entrypoint()
-def main(model: str = "500m", outer: int = 0):
+def main(model: str = "500m", outer: int = 0, seed: int = C.SEED):
     fn = {"125m": train_125m, "500m": train_500m, "gemma": train_gemma}[model]
-    print(fn.remote(outer))
+    print(fn.remote(outer, seed))

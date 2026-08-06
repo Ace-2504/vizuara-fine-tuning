@@ -23,20 +23,22 @@ image = (
 )
 
 PREFS = "/data/rl/preferences.jsonl"
-SFT = "/data/checkpoints/slm-500m-sft"
-OUT = "/data/checkpoints/reward-500m"
 EPOCHS, LR, MICRO, HOLDOUT = 3, 1e-5, 4, 60
 
 
-@app.function(image=image, gpu="L4", volumes={"/data": vol}, timeout=60 * 60)
-def train():
+@app.function(image=image, gpu="L4", volumes={"/data": vol}, secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60)
+def train(seed: int = C.SEED):
     import json, math, os, time
     import torch, torch.nn.functional as F
     from torch.utils.data import DataLoader
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
     import ft_data as D
 
-    torch.manual_seed(C.SEED); dev = "cuda"
+    # multi-seed: RM backbone = the seeded 500M SFT; one RM per seed serves both PPO runs.
+    SFT = f"/data/checkpoints/slm-500m-sft-seed{seed}"
+    OUT = f"/data/checkpoints/reward-500m-seed{seed}"
+    torch.manual_seed(seed); dev = "cuda"
+    print(f"[reward] seed={seed} backbone={SFT} out={OUT}", flush=True)
     tok = AutoTokenizer.from_pretrained(SFT)
     pad_id = tok.convert_tokens_to_ids("<|pad|>")
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -69,7 +71,8 @@ def train():
         out = model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"])
         return out.logits.squeeze(-1)                            # [2*micro]
 
-    dl = DataLoader(train_pairs, batch_size=MICRO, shuffle=True, collate_fn=collate)
+    g = torch.Generator().manual_seed(seed)
+    dl = DataLoader(train_pairs, batch_size=MICRO, shuffle=True, collate_fn=collate, generator=g)
     opt = torch.optim.AdamW(model.parameters(), lr=LR)
     total = math.ceil(len(dl)) * EPOCHS
     model.train(); t0 = time.time(); step = 0
@@ -103,5 +106,5 @@ def train():
 
 
 @app.local_entrypoint()
-def main():
-    print(train.remote())
+def main(seed: int = C.SEED):
+    print(train.remote(seed))

@@ -22,3 +22,6 @@ migrate/
 eval_results/
 install_cuda.log
 report_site/
+
+# Excel lock/temp files
+~$*

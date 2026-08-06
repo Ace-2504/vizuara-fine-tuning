@@ -27,7 +27,7 @@ image = (
 
 @app.function(image=image, gpu=C.M125["gpu"], volumes={"/data": vol},
               secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 4)
-def train(method: str, limit: int = 0, epochs: int = 0):
+def train(method: str, limit: int = 0, epochs: int = 0, seed: int = C.SEED):
     import math, os, time
     import torch
     from torch.utils.data import DataLoader
@@ -37,7 +37,7 @@ def train(method: str, limit: int = 0, epochs: int = 0):
     cfg = C.M125
     n_epochs = epochs or cfg["epochs"]     # smoke tests pass epochs=1
     assert method in C.DATA, f"method must be sft|raft, got {method}"
-    torch.manual_seed(C.SEED)
+    torch.manual_seed(seed)                # multi-seed: overrides C.SEED per run
     dev = "cuda"
     token = os.environ.get("HF_TOKEN")     # public model -> None ok; explicit avoids stale cache
 
@@ -54,7 +54,8 @@ def train(method: str, limit: int = 0, epochs: int = 0):
         rows = rows[:limit]
     ds = D.ChatDataset(rows, tok, D.render_custom, cfg["max_seq"])
     print(f"[125m/{method}] {len(ds)} examples | dropped {ds.dropped} | trunc {ds.trunc}", flush=True)
-    dl = DataLoader(ds, batch_size=cfg["micro_batch"], shuffle=True,
+    g = torch.Generator().manual_seed(seed)   # seed the shuffle so each run differs
+    dl = DataLoader(ds, batch_size=cfg["micro_batch"], shuffle=True, generator=g,
                     collate_fn=lambda b: D.collate(b, pad_id))
 
     steps_per_epoch = math.ceil(len(dl) / cfg["grad_accum"])
@@ -81,7 +82,7 @@ def train(method: str, limit: int = 0, epochs: int = 0):
                           f"loss {running/(20*cfg['grad_accum']):.4f} "
                           f"lr {sched.get_last_lr()[0]:.2e}", flush=True); running = 0.0
 
-    out = f"{C.CKPT_ROOT}/{cfg['name']}-{method}"
+    out = f"{C.CKPT_ROOT}/{cfg['name']}-{method}-seed{seed}"   # never clobbers the original
     os.makedirs(out, exist_ok=True)
     model.save_pretrained(out); tok.save_pretrained(out)
     vol.commit()
@@ -92,5 +93,5 @@ def train(method: str, limit: int = 0, epochs: int = 0):
 
 
 @app.local_entrypoint()
-def main(method: str = "sft", limit: int = 0, epochs: int = 0):
-    print(train.remote(method, limit, epochs))
+def main(method: str = "sft", limit: int = 0, epochs: int = 0, seed: int = C.SEED):
+    print(train.remote(method, limit, epochs, seed))

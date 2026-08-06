@@ -92,31 +92,20 @@ no connection to that reward at all."
 held-out question and click “Ask all 13 & judge” — let the models answer and be scored live. Then
 click the Leaderboard tab.]**
 
-**SAY:** "And sir, this is the piece the assignment specifically asks for — a single unified site where
-I can run every one of these models and have one independent judge score them fairly and produce a
-judgment score. Let me set that up right now.. I pick a held-out question, every model answers it live,
-and a blind judge — handed the real answer — scores each response and gives it a number. While they
-generate, watch what happens: my 125-million DPO model gives a two-word non-answer, the RLAIF version
-actually attempts it, and the Gemma models answer fully — the collapse from the chart, happening live.
-And here on the leaderboard is the judge's verdict across all five hundred held-out questions, every
-model ranked by its mean score. One honest note: this leaderboard grades on a richer zero-to-ten rubric
-— correctness, completeness, groundedness and clarity — a different scale than the earlier chart, which
-scored zero-to-one on correctness alone. The caption underneath explains it's the same questions, the
-same answers, and the same judge, just scored a different way."
+**SAY:** "And sir, here is my live, deployed SLM arena where you pick a template question or ask a custom question and every model answers it in real time, then the blind judge scores each one against the real answer. Let me set that up right now.. Ok, While my models are generating their output,  I want to highlight that the judge here grades differently than the judge did in my analysis. This judge performs grading based on 4 parameters - correctness, completeness, groundedness and clarity and scores are on a grading scale of 10. Whereas the judge in my initial analysis graded the models from 0 to 1 only on correctness. By changing the grading style I noticed something interesting — this time, nothing moved. My aligned models come out in exactly the same order as they did in my analysis: Gemma DPO on top at 9.5 out of 10, then Gemma RLAIF at 9.1, then my 500-million RLAIF at 5.6, my 500-million DPO at 4.0, my 125-million RLAIF at 3.7, and my 125-million DPO right at the bottom with 0.9. The generation has finished, let's take a look at its results..."
 
 ---
 
 ### 5:05–5:35 · Close
 **[STAGE: Go back to the Set 2 page — the leaderboard / summary section.]**
 
-**SAY:** "So, sir, to recap my key findings: alignment does help, but the best method flips with model
+**SAY:** "So, sir, to recap my key findings: alignment does help, but the best method changes with model
 size — RLAIF for my small models, DPO for the large one — and DPO can destabilise a model that's simply
 too small, as it did to my 125-million one. And because every model is judged by one independent AI, not
-by its own reward, the comparison stays fair. But this result left me with a question I keep turning
-over: is the method flip something fundamental about how these two techniques scale, or is it a sign that
-my small models just didn't have enough clean preference data for DPO to work with? And in your
-experience, sir, is there a rough size at which DPO reliably becomes the safer choice over RLAIF for
-grounded question-answering? I would love to hear your views and opinions on these on discord if
+by its own reward, the comparison stays fair. But this result got me thinking: is it a real pattern that
+RLAIF suits smaller models and DPO suits bigger ones, or is it just a sign that my small models didn't
+have enough good preference examples for DPO to learn from? And in your experience, sir, is there a rough
+size at which DPO reliably becomes the safer choice over RLAIF for grounded question-answering? I would love to hear your views and opinions on these on discord if
 possible. That said, getting to this point has taught me more than I expected, and I'm eager to take
 your feedback and build upon it. Thank you for watching sir, I'm looking forward to continue this
 conversation with you."

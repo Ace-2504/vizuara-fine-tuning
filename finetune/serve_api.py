@@ -110,6 +110,8 @@ CATALOG = {
     "125m-dpo":    {"src": os.path.join(CKPT, "slm-125m-sft-dpo"),  "kind": "qa",         "label": "SLM-125M · DPO"},
     "125m-rlaif":  {"src": os.path.join(CKPT, "slm-125m-sft-rlaif"),"kind": "qa",         "label": "SLM-125M · RLAIF"},
     "500m-base":   {"src": "thesreedath/slm-500m-base",             "kind": "completion", "label": "SLM-500M (base)"},
+    "500m-qa":     {"src": os.path.join(CKPT, "slm-500m-sft"),      "kind": "qa",         "label": "SLM-500M · QA"},
+    "500m-raft":   {"src": os.path.join(CKPT, "slm-500m-raft"),     "kind": "grounded",   "label": "SLM-500M · RAFT"},
     "500m-dpo":    {"src": os.path.join(CKPT, "slm-500m-sft-dpo"),  "kind": "qa",         "label": "SLM-500M · DPO"},
     "500m-rlaif":  {"src": os.path.join(CKPT, "slm-500m-sft-rlaif"),"kind": "qa",         "label": "SLM-500M · RLAIF"},
     "gemma-base":  {"src": "google/gemma-2-2b-it",                  "kind": "qa",         "label": "Gemma 2 2B (base)"},

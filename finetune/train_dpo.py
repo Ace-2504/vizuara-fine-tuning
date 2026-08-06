@@ -31,45 +31,59 @@ LR_FULL, LR_LORA = 5e-6, 1e-4
 
 CFG = {
     "125m":  {"gpu": "L4", "mode": "full",  "render": "custom", "max_seq": 1024,
+              "name": "slm-125m",
               "ckpt": "/data/checkpoints/slm-125m-sft", "out": "/data/checkpoints/slm-125m-sft-dpo",
               "micro": 4},                                    # 125M is tiny -> larger micro fits
     "500m":  {"gpu": "L4", "mode": "full",  "render": "custom", "max_seq": 1024,
+              "name": "slm-500m",
               "ckpt": "/data/checkpoints/slm-500m-sft", "out": "/data/checkpoints/slm-500m-sft-dpo",
               "micro": 2},
     "gemma": {"gpu": "A100-40GB", "mode": "qlora", "render": "gemma", "max_seq": 2048,
+              "name": "gemma-2-2b",
               "base": "google/gemma-2-2b-it", "adapter": "/data/checkpoints/gemma-2-2b-sft",
               "out": "/data/checkpoints/gemma-2-2b-sft-dpo", "micro": 2},
 }
 
 
-@app.function(image=image, gpu="L4", volumes={"/data": vol},
-              secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 3)
-def train_125m(limit: int = 0, epochs: int = 0):
-    return _run("125m", limit, epochs)
+def _seed_paths(cfg, seed):
+    """Multi-seed: init from the SEEDED SFT (*-sft-seed{seed}) and write to *-sft-dpo-seed{seed}.
+    Leaves the original published checkpoints untouched. Returns a shallow-copied cfg."""
+    name = cfg["name"]
+    sft = f"/data/checkpoints/{name}-sft-seed{seed}"
+    cfg = {**cfg, "out": f"/data/checkpoints/{name}-sft-dpo-seed{seed}"}
+    cfg["ckpt" if cfg["mode"] == "full" else "adapter"] = sft
+    return cfg
 
 
 @app.function(image=image, gpu="L4", volumes={"/data": vol},
               secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 3)
-def train_500m(limit: int = 0, epochs: int = 0):
-    return _run("500m", limit, epochs)
+def train_125m(limit: int = 0, epochs: int = 0, seed: int = C.SEED):
+    return _run("125m", limit, epochs, seed)
+
+
+@app.function(image=image, gpu="L4", volumes={"/data": vol},
+              secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 3)
+def train_500m(limit: int = 0, epochs: int = 0, seed: int = C.SEED):
+    return _run("500m", limit, epochs, seed)
 
 
 @app.function(image=image, gpu="A100-40GB", volumes={"/data": vol},
               secrets=[modal.Secret.from_name("hf-token")], timeout=60 * 60 * 4)
-def train_gemma(limit: int = 0, epochs: int = 0):
-    return _run("gemma", limit, epochs)
+def train_gemma(limit: int = 0, epochs: int = 0, seed: int = C.SEED):
+    return _run("gemma", limit, epochs, seed)
 
 
-def _run(model: str, limit: int, epochs: int):
+def _run(model: str, limit: int, epochs: int, seed: int = C.SEED):
     import json, math, os, time
     import torch, torch.nn.functional as F
     from torch.utils.data import DataLoader
     from transformers import AutoModelForCausalLM, AutoTokenizer
     import ft_data as D
 
-    cfg = CFG[model]
+    cfg = _seed_paths(CFG[model], seed)     # seeded-SFT init -> *-sft-dpo-seed{seed}
     n_epochs = epochs or EPOCHS
-    torch.manual_seed(C.SEED); dev = "cuda"
+    torch.manual_seed(seed); dev = "cuda"
+    print(f"[dpo/{model}] seed={seed} init={cfg.get('ckpt') or cfg.get('adapter')} out={cfg['out']}", flush=True)
     token = os.environ.get("HF_TOKEN")
     render = D.render_custom if cfg["render"] == "custom" else D.render_gemma
 
@@ -124,7 +138,8 @@ def _run(model: str, limit: int, epochs: int):
         flat = [b[0] for b in batch] + [b[1] for b in batch]     # chosen then rejected
         return D.collate(flat, pad_id)
 
-    dl = DataLoader(pairs, batch_size=cfg["micro"], shuffle=True, collate_fn=collate)
+    g = torch.Generator().manual_seed(seed)   # seed the shuffle so each run differs deterministically
+    dl = DataLoader(pairs, batch_size=cfg["micro"], shuffle=True, collate_fn=collate, generator=g)
 
     def seq_logp(model_, batch):
         out = model_(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"],
@@ -170,6 +185,6 @@ def _run(model: str, limit: int, epochs: int):
 
 
 @app.local_entrypoint()
-def main(model: str = "500m", limit: int = 0, epochs: int = 0):
+def main(model: str = "500m", limit: int = 0, epochs: int = 0, seed: int = C.SEED):
     fn = {"125m": train_125m, "500m": train_500m, "gemma": train_gemma}[model]
-    print(fn.remote(limit, epochs))
+    print(fn.remote(limit, epochs, seed))

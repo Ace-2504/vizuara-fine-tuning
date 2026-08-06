@@ -1,0 +1,327 @@
+Note that running a local entrypoint in detached mode only keeps the last triggered Modal function alive after the parent process has been killed or disconnected.
+✓ Initialized. View run at 
+https://modal.com/apps/aceaynon2504/main/ap-goKuMbpSrwILsBsLclOgYZ
+Building image im-s8YmhMcFMXADpOw2AmH49v
+
+=> Step 0: FROM base
+
+=> Step 1: RUN python -m pip install 'accelerate>=0.34' 'numpy>=1.26,<2.0' torch==2.4.1 transformers==4.46.3
+Looking in indexes: http://pypi-mirror.modal.local:5555/simple
+Collecting accelerate>=0.34
+  Downloading http://pypi-mirror.modal.local:5555/simple/accelerate/accelerate-1.14.0-py3-none-any.whl.metadata (19 kB)
+Collecting numpy<2.0,>=1.26
+  Downloading http://pypi-mirror.modal.local:5555/simple/numpy/numpy-1.26.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (61 kB)
+Collecting torch==2.4.1
+  Downloading http://pypi-mirror.modal.local:5555/simple/torch/torch-2.4.1-cp312-cp312-manylinux1_x86_64.whl.metadata (26 kB)
+Collecting transformers==4.46.3
+  Downloading http://pypi-mirror.modal.local:5555/simple/transformers/transformers-4.46.3-py3-none-any.whl.metadata (44 kB)
+Collecting filelock (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/filelock/filelock-3.32.2-py3-none-any.whl.metadata (2.0 kB)
+Collecting typing-extensions>=4.8.0 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/typing-extensions/typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting sympy (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/sympy/sympy-1.14.0-py3-none-any.whl.metadata (12 kB)
+Collecting networkx (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/networkx/networkx-3.6.1-py3-none-any.whl.metadata (6.8 kB)
+Collecting jinja2 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/jinja2/jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting fsspec (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/fsspec/fsspec-2026.7.0-py3-none-any.whl.metadata (10 kB)
+Collecting setuptools (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/setuptools/setuptools-83.0.0-py3-none-any.whl.metadata (6.6 kB)
+Collecting nvidia-cuda-nvrtc-cu12==12.1.105 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cuda-nvrtc-cu12/nvidia_cuda_nvrtc_cu12-12.1.105-py3-none-manylinux1_x86_64.whl.metadata (1.5 kB)
+Collecting nvidia-cuda-runtime-cu12==12.1.105 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cuda-runtime-cu12/nvidia_cuda_runtime_cu12-12.1.105-py3-none-manylinux1_x86_64.whl.metadata (1.5 kB)
+Collecting nvidia-cuda-cupti-cu12==12.1.105 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cuda-cupti-cu12/nvidia_cuda_cupti_cu12-12.1.105-py3-none-manylinux1_x86_64.whl.metadata (1.6 kB)
+Collecting nvidia-cudnn-cu12==9.1.0.70 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cudnn-cu12/nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl.metadata (1.6 kB)
+Collecting nvidia-cublas-cu12==12.1.3.1 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cublas-cu12/nvidia_cublas_cu12-12.1.3.1-py3-none-manylinux1_x86_64.whl.metadata (1.5 kB)
+Collecting nvidia-cufft-cu12==11.0.2.54 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cufft-cu12/nvidia_cufft_cu12-11.0.2.54-py3-none-manylinux1_x86_64.whl.metadata (1.5 kB)
+Collecting nvidia-curand-cu12==10.3.2.106 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-curand-cu12/nvidia_curand_cu12-10.3.2.106-py3-none-manylinux1_x86_64.whl.metadata (1.5 kB)
+Collecting nvidia-cusolver-cu12==11.4.5.107 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cusolver-cu12/nvidia_cusolver_cu12-11.4.5.107-py3-none-manylinux1_x86_64.whl.metadata (1.6 kB)
+Collecting nvidia-cusparse-cu12==12.1.0.106 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cusparse-cu12/nvidia_cusparse_cu12-12.1.0.106-py3-none-manylinux1_x86_64.whl.metadata (1.6 kB)
+Collecting nvidia-nccl-cu12==2.20.5 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-nccl-cu12/nvidia_nccl_cu12-2.20.5-py3-none-manylinux2014_x86_64.whl.metadata (1.8 kB)
+Collecting nvidia-nvtx-cu12==12.1.105 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-nvtx-cu12/nvidia_nvtx_cu12-12.1.105-py3-none-manylinux1_x86_64.whl.metadata (1.7 kB)
+Collecting triton==3.0.0 (from torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/triton/triton-3.0.0-1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (1.3 kB)
+Collecting huggingface-hub<1.0,>=0.23.2 (from transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/huggingface-hub/huggingface_hub-0.36.2-py3-none-any.whl.metadata (15 kB)
+Collecting packaging>=20.0 (from transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/packaging/packaging-26.2-py3-none-any.whl.metadata (3.5 kB)
+Collecting pyyaml>=5.1 (from transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/pyyaml/pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+Collecting regex!=2019.12.17 (from transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/regex/regex-2026.7.19-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+Collecting requests (from transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/requests/requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+Collecting tokenizers<0.21,>=0.20 (from transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/tokenizers/tokenizers-0.20.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.7 kB)
+Collecting safetensors>=0.4.1 (from transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/safetensors/safetensors-0.8.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.2 kB)
+Collecting tqdm>=4.27 (from transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/tqdm/tqdm-4.70.0-py3-none-any.whl.metadata (57 kB)
+Collecting nvidia-nvjitlink-cu12 (from nvidia-cusolver-cu12==11.4.5.107->torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-nvjitlink-cu12/nvidia_nvjitlink_cu12-12.9.86-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl.metadata (1.7 kB)
+Collecting hf-xet<2.0.0,>=1.1.3 (from huggingface-hub<1.0,>=0.23.2->transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/hf-xet/hf_xet-1.5.2-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (4.9 kB)
+Collecting psutil (from accelerate>=0.34)
+  Downloading http://pypi-mirror.modal.local:5555/simple/psutil/psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl.metadata (22 kB)
+Collecting MarkupSafe>=2.0 (from jinja2->torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/markupsafe/markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.7 kB)
+Collecting charset_normalizer<4,>=2 (from requests->transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/charset-normalizer/charset_normalizer-3.4.9-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (41 kB)
+Collecting idna<4,>=2.5 (from requests->transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/idna/idna-3.18-py3-none-any.whl.metadata (6.1 kB)
+Collecting urllib3<3,>=1.26 (from requests->transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/urllib3/urllib3-2.7.0-py3-none-any.whl.metadata (6.9 kB)
+Collecting certifi>=2023.5.7 (from requests->transformers==4.46.3)
+  Downloading http://pypi-mirror.modal.local:5555/simple/certifi/certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+Collecting mpmath<1.4,>=1.1.0 (from sympy->torch==2.4.1)
+  Downloading http://pypi-mirror.modal.local:5555/simple/mpmath/mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/torch/torch-2.4.1-cp312-cp312-manylinux1_x86_64.whl (797.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 797.0/797.0 MB 198.9 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/transformers/transformers-4.46.3-py3-none-any.whl (10.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.0/10.0 MB 220.4 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cublas-cu12/nvidia_cublas_cu12-12.1.3.1-py3-none-manylinux1_x86_64.whl (410.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 410.6/410.6 MB 197.7 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cuda-cupti-cu12/nvidia_cuda_cupti_cu12-12.1.105-py3-none-manylinux1_x86_64.whl (14.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.1/14.1 MB 186.6 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cuda-nvrtc-cu12/nvidia_cuda_nvrtc_cu12-12.1.105-py3-none-manylinux1_x86_64.whl (23.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 23.7/23.7 MB 187.5 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cuda-runtime-cu12/nvidia_cuda_runtime_cu12-12.1.105-py3-none-manylinux1_x86_64.whl (823 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 823.6/823.6 kB 347.1 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cudnn-cu12/nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl (664.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 664.8/664.8 MB 191.4 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cufft-cu12/nvidia_cufft_cu12-11.0.2.54-py3-none-manylinux1_x86_64.whl (121.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 121.6/121.6 MB 201.4 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-curand-cu12/nvidia_curand_cu12-10.3.2.106-py3-none-manylinux1_x86_64.whl (56.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 56.5/56.5 MB 85.5 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cusolver-cu12/nvidia_cusolver_cu12-11.4.5.107-py3-none-manylinux1_x86_64.whl (124.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 124.2/124.2 MB 170.0 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-cusparse-cu12/nvidia_cusparse_cu12-12.1.0.106-py3-none-manylinux1_x86_64.whl (196.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 196.0/196.0 MB 189.9 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-nccl-cu12/nvidia_nccl_cu12-2.20.5-py3-none-manylinux2014_x86_64.whl (176.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 176.2/176.2 MB 207.4 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-nvtx-cu12/nvidia_nvtx_cu12-12.1.105-py3-none-manylinux1_x86_64.whl (99 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/triton/triton-3.0.0-1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (209.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 209.5/209.5 MB 198.7 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/numpy/numpy-1.26.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (18.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 18.0/18.0 MB 465.7 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/huggingface-hub/huggingface_hub-0.36.2-py3-none-any.whl (566 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 566.4/566.4 kB 822.5 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/hf-xet/hf_xet-1.5.2-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.4 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.4/4.4 MB 589.8 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/tokenizers/tokenizers-0.20.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.0/3.0 MB 251.9 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/accelerate/accelerate-1.14.0-py3-none-any.whl (389 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/fsspec/fsspec-2026.7.0-py3-none-any.whl (206 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/packaging/packaging-26.2-py3-none-any.whl (100 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/pyyaml/pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (807 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 807.9/807.9 kB 771.9 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/regex/regex-2026.7.19-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (801 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 801.8/801.8 kB 822.6 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/safetensors/safetensors-0.8.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (516 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/tqdm/tqdm-4.70.0-py3-none-any.whl (80 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/typing-extensions/typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/filelock/filelock-3.32.2-py3-none-any.whl (98 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/jinja2/jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/markupsafe/markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (22 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/networkx/networkx-3.6.1-py3-none-any.whl (2.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 616.3 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/nvidia-nvjitlink-cu12/nvidia_nvjitlink_cu12-12.9.86-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl (39.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 39.7/39.7 MB 196.5 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/psutil/psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl (155 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/requests/requests-2.34.2-py3-none-any.whl (73 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/charset-normalizer/charset_normalizer-3.4.9-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (224 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/idna/idna-3.18-py3-none-any.whl (65 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/urllib3/urllib3-2.7.0-py3-none-any.whl (131 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/certifi/certifi-2026.7.22-py3-none-any.whl (136 kB)
+Downloading http://pypi-mirror.modal.local:5555/simple/setuptools/setuptools-83.0.0-py3-none-any.whl (1.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.0/1.0 MB 715.7 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/sympy/sympy-1.14.0-py3-none-any.whl (6.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 567.7 MB/s eta 0:00:00
+Downloading http://pypi-mirror.modal.local:5555/simple/mpmath/mpmath-1.3.0-py3-none-any.whl (536 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 kB 1.0 GB/s eta 0:00:00
+Installing collected packages: mpmath, urllib3, typing-extensions, tqdm, sympy, setuptools, safetensors, regex, pyyaml, psutil, packaging, nvidia-nvtx-cu12, nvidia-nvjitlink-cu12, nvidia-nccl-cu12, nvidia-curand-cu12, nvidia-cufft-cu12, nvidia-cuda-runtime-cu12, nvidia-cuda-nvrtc-cu12, nvidia-cuda-cupti-cu12, nvidia-cublas-cu12, numpy, networkx, MarkupSafe, idna, hf-xet, fsspec, filelock, charset_normalizer, certifi, triton, requests, nvidia-cusparse-cu12, nvidia-cudnn-cu12, jinja2, nvidia-cusolver-cu12, huggingface-hub, torch, tokenizers, transformers, accelerate
+
+Successfully installed MarkupSafe-3.0.3 accelerate-1.14.0 certifi-2026.7.22 charset_normalizer-3.4.9 filelock-3.32.2 fsspec-2026.7.0 hf-xet-1.5.2 huggingface-hub-0.36.2 idna-3.18 jinja2-3.1.6 mpmath-1.3.0 networkx-3.6.1 numpy-1.26.4 nvidia-cublas-cu12-12.1.3.1 nvidia-cuda-cupti-cu12-12.1.105 nvidia-cuda-nvrtc-cu12-12.1.105 nvidia-cuda-runtime-cu12-12.1.105 nvidia-cudnn-cu12-9.1.0.70 nvidia-cufft-cu12-11.0.2.54 nvidia-curand-cu12-10.3.2.106 nvidia-cusolver-cu12-11.4.5.107 nvidia-cusparse-cu12-12.1.0.106 nvidia-nccl-cu12-2.20.5 nvidia-nvjitlink-cu12-12.9.86 nvidia-nvtx-cu12-12.1.105 packaging-26.2 psutil-7.2.2 pyyaml-6.0.3 regex-2026.7.19 requests-2.34.2 safetensors-0.8.0 setuptools-83.0.0 sympy-1.14.0 tokenizers-0.20.3 torch-2.4.1 tqdm-4.70.0 transformers-4.46.3 triton-3.0.0 typing-extensions-4.16.0 urllib3-2.7.0
+
+[notice] A new release of pip is available: 25.1.1 -> 26.2
+[notice] To update, run: pip install --upgrade pip
+Saving image...
+Image saved, took 1.78s
+
+Built image im-s8YmhMcFMXADpOw2AmH49v in 72.01s
+
+
+Building image im-wIdqCL6fteOMP7fmFf0ETT
+
+=> Step 0: FROM base
+
+=> Step 1: ENV HF_HUB_DISABLE_IMPLICIT_TOKEN=1
+
+=> Step 2: ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+Saving image...
+Image saved, took 2.97s
+
+Built image im-wIdqCL6fteOMP7fmFf0ETT in 4.02s
+
+
+✓ Created objects.
+├── 🔨 Created mount D:\vizuara-fine-tuning\finetune\train_125m.py
+├── 🔨 Created mount PythonPackage:ft_config, PythonPackage:ft_data
+└── 🔨 Created function train.
+[125m/sft] 15000 examples | dropped 0 | trunc 0
+  epoch 0 step 20/2814 loss 3.6229 lr 7.14e-06
+  epoch 0 step 40/2814 loss 3.2783 lr 1.43e-05
+  epoch 0 step 60/2814 loss 3.0026 lr 2.14e-05
+  epoch 0 step 80/2814 loss 2.7809 lr 2.86e-05
+  epoch 0 step 100/2814 loss 2.6133 lr 3.00e-05
+  epoch 0 step 120/2814 loss 2.6039 lr 3.00e-05
+  epoch 0 step 140/2814 loss 2.4410 lr 3.00e-05
+  epoch 0 step 160/2814 loss 2.4283 lr 2.99e-05
+  epoch 0 step 180/2814 loss 2.5229 lr 2.99e-05
+  epoch 0 step 200/2814 loss 2.4673 lr 2.99e-05
+  epoch 0 step 220/2814 loss 2.4594 lr 2.98e-05
+  epoch 0 step 240/2814 loss 2.4320 lr 2.98e-05
+  epoch 0 step 260/2814 loss 2.4994 lr 2.97e-05
+  epoch 0 step 280/2814 loss 2.4321 lr 2.96e-05
+  epoch 0 step 300/2814 loss 2.4798 lr 2.95e-05
+  epoch 0 step 320/2814 loss 2.4443 lr 2.95e-05
+  epoch 0 step 340/2814 loss 2.4431 lr 2.94e-05
+  epoch 0 step 360/2814 loss 2.4518 lr 2.92e-05
+  epoch 0 step 380/2814 loss 2.4991 lr 2.91e-05
+  epoch 0 step 400/2814 loss 2.3589 lr 2.90e-05
+  epoch 0 step 420/2814 loss 2.4785 lr 2.89e-05
+  epoch 0 step 440/2814 loss 2.4276 lr 2.88e-05
+  epoch 0 step 460/2814 loss 2.3478 lr 2.86e-05
+  epoch 0 step 480/2814 loss 2.3939 lr 2.85e-05
+  epoch 0 step 500/2814 loss 2.3236 lr 2.83e-05
+  epoch 0 step 520/2814 loss 2.4396 lr 2.82e-05
+  epoch 0 step 540/2814 loss 2.3668 lr 2.80e-05
+  epoch 0 step 560/2814 loss 2.3964 lr 2.78e-05
+  epoch 0 step 580/2814 loss 2.4840 lr 2.76e-05
+  epoch 0 step 600/2814 loss 2.3326 lr 2.74e-05
+  epoch 0 step 620/2814 loss 2.4505 lr 2.72e-05
+  epoch 0 step 640/2814 loss 2.3402 lr 2.70e-05
+  epoch 0 step 660/2814 loss 2.3299 lr 2.68e-05
+  epoch 0 step 680/2814 loss 2.3590 lr 2.66e-05
+  epoch 0 step 700/2814 loss 2.2921 lr 2.64e-05
+  epoch 0 step 720/2814 loss 2.2717 lr 2.62e-05
+  epoch 0 step 740/2814 loss 2.3725 lr 2.59e-05
+  epoch 0 step 760/2814 loss 2.3723 lr 2.57e-05
+  epoch 0 step 780/2814 loss 2.2964 lr 2.54e-05
+  epoch 0 step 800/2814 loss 2.4199 lr 2.52e-05
+  epoch 0 step 820/2814 loss 2.3445 lr 2.49e-05
+  epoch 0 step 840/2814 loss 2.3363 lr 2.47e-05
+  epoch 0 step 860/2814 loss 2.3824 lr 2.44e-05
+  epoch 0 step 880/2814 loss 2.2677 lr 2.41e-05
+  epoch 0 step 900/2814 loss 2.2715 lr 2.39e-05
+  epoch 0 step 920/2814 loss 2.2590 lr 2.36e-05
+  epoch 1 step 940/2814 loss 2.3263 lr 2.33e-05
+  epoch 1 step 960/2814 loss 2.2239 lr 2.30e-05
+  epoch 1 step 980/2814 loss 2.2868 lr 2.27e-05
+  epoch 1 step 1000/2814 loss 2.2752 lr 2.24e-05
+  epoch 1 step 1020/2814 loss 2.2354 lr 2.21e-05
+  epoch 1 step 1040/2814 loss 2.2140 lr 2.18e-05
+  epoch 1 step 1060/2814 loss 2.3383 lr 2.15e-05
+  epoch 1 step 1080/2814 loss 2.2450 lr 2.12e-05
+  epoch 1 step 1100/2814 loss 2.2573 lr 2.09e-05
+  epoch 1 step 1120/2814 loss 2.2254 lr 2.05e-05
+  epoch 1 step 1140/2814 loss 2.1716 lr 2.02e-05
+  epoch 1 step 1160/2814 loss 2.2213 lr 1.99e-05
+  epoch 1 step 1180/2814 loss 2.2256 lr 1.96e-05
+  epoch 1 step 1200/2814 loss 2.1850 lr 1.92e-05
+  epoch 1 step 1220/2814 loss 2.2437 lr 1.89e-05
+  epoch 1 step 1240/2814 loss 2.2210 lr 1.86e-05
+  epoch 1 step 1260/2814 loss 2.2663 lr 1.82e-05
+  epoch 1 step 1280/2814 loss 2.1860 lr 1.79e-05
+  epoch 1 step 1300/2814 loss 2.2153 lr 1.76e-05
+  epoch 1 step 1320/2814 loss 2.1963 lr 1.72e-05
+  epoch 1 step 1340/2814 loss 2.2368 lr 1.69e-05
+  epoch 1 step 1360/2814 loss 2.1924 lr 1.65e-05
+  epoch 1 step 1380/2814 loss 2.2359 lr 1.62e-05
+  epoch 1 step 1400/2814 loss 2.2162 lr 1.58e-05
+  epoch 1 step 1420/2814 loss 2.2181 lr 1.55e-05
+  epoch 1 step 1440/2814 loss 2.2353 lr 1.52e-05
+  epoch 1 step 1460/2814 loss 2.1901 lr 1.48e-05
+  epoch 1 step 1480/2814 loss 2.1685 lr 1.45e-05
+  epoch 1 step 1500/2814 loss 2.2214 lr 1.41e-05
+  epoch 1 step 1520/2814 loss 2.2047 lr 1.38e-05
+  epoch 1 step 1540/2814 loss 2.1743 lr 1.34e-05
+  epoch 1 step 1560/2814 loss 2.3081 lr 1.31e-05
+  epoch 1 step 1580/2814 loss 2.3232 lr 1.27e-05
+  epoch 1 step 1600/2814 loss 2.2420 lr 1.24e-05
+  epoch 1 step 1620/2814 loss 2.2118 lr 1.21e-05
+  epoch 1 step 1640/2814 loss 2.2053 lr 1.17e-05
+  epoch 1 step 1660/2814 loss 2.0973 lr 1.14e-05
+  epoch 1 step 1680/2814 loss 2.2157 lr 1.11e-05
+  epoch 1 step 1700/2814 loss 2.2771 lr 1.07e-05
+  epoch 1 step 1720/2814 loss 2.2105 lr 1.04e-05
+  epoch 1 step 1740/2814 loss 2.2316 lr 1.01e-05
+  epoch 1 step 1760/2814 loss 2.2665 lr 9.75e-06
+  epoch 1 step 1780/2814 loss 2.1377 lr 9.42e-06
+  epoch 1 step 1800/2814 loss 2.2176 lr 9.10e-06
+  epoch 1 step 1820/2814 loss 2.2408 lr 8.79e-06
+  epoch 1 step 1840/2814 loss 2.1850 lr 8.48e-06
+  epoch 1 step 1860/2814 loss 2.1932 lr 8.17e-06
+  epoch 2 step 1880/2814 loss 2.2345 lr 7.86e-06
+  epoch 2 step 1900/2814 loss 2.2554 lr 7.56e-06
+  epoch 2 step 1920/2814 loss 2.1681 lr 7.26e-06
+  epoch 2 step 1940/2814 loss 2.1514 lr 6.97e-06
+  epoch 2 step 1960/2814 loss 2.2114 lr 6.68e-06
+  epoch 2 step 1980/2814 loss 2.2174 lr 6.39e-06
+  epoch 2 step 2000/2814 loss 2.1609 lr 6.11e-06
+  epoch 2 step 2020/2814 loss 2.1421 lr 5.84e-06
+  epoch 2 step 2040/2814 loss 2.2589 lr 5.57e-06
+  epoch 2 step 2060/2814 loss 2.1285 lr 5.30e-06
+  epoch 2 step 2080/2814 loss 2.1622 lr 5.04e-06
+  epoch 2 step 2100/2814 loss 2.1223 lr 4.78e-06
+  epoch 2 step 2120/2814 loss 2.2441 lr 4.53e-06
+  epoch 2 step 2140/2814 loss 2.2329 lr 4.29e-06
+  epoch 2 step 2160/2814 loss 2.1606 lr 4.05e-06
+  epoch 2 step 2180/2814 loss 2.0488 lr 3.82e-06
+  epoch 2 step 2200/2814 loss 2.1502 lr 3.59e-06
+  epoch 2 step 2220/2814 loss 2.2419 lr 3.37e-06
+  epoch 2 step 2240/2814 loss 2.1514 lr 3.16e-06
+  epoch 2 step 2260/2814 loss 2.1543 lr 2.95e-06
+  epoch 2 step 2280/2814 loss 2.1189 lr 2.74e-06
+  epoch 2 step 2300/2814 loss 2.1638 lr 2.55e-06
+  epoch 2 step 2320/2814 loss 2.1524 lr 2.36e-06
+  epoch 2 step 2340/2814 loss 2.1587 lr 2.18e-06
+  epoch 2 step 2360/2814 loss 2.1478 lr 2.00e-06
+  epoch 2 step 2380/2814 loss 2.1190 lr 1.83e-06
+  epoch 2 step 2400/2814 loss 2.2084 lr 1.67e-06
+  epoch 2 step 2420/2814 loss 2.1014 lr 1.52e-06
+  epoch 2 step 2440/2814 loss 2.2550 lr 1.37e-06
+  epoch 2 step 2460/2814 loss 2.1527 lr 1.23e-06
+  epoch 2 step 2480/2814 loss 2.2760 lr 1.09e-06
+  epoch 2 step 2500/2814 loss 2.2304 lr 9.69e-07
+  epoch 2 step 2520/2814 loss 2.0977 lr 8.50e-07
+  epoch 2 step 2540/2814 loss 2.1337 lr 7.39e-07
+  epoch 2 step 2560/2814 loss 2.2480 lr 6.36e-07
+  epoch 2 step 2580/2814 loss 2.1493 lr 5.41e-07
+  epoch 2 step 2600/2814 loss 2.1746 lr 4.53e-07
+  epoch 2 step 2620/2814 loss 2.2232 lr 3.72e-07
+  epoch 2 step 2640/2814 loss 2.1555 lr 3.00e-07
+  epoch 2 step 2660/2814 loss 2.2776 lr 2.35e-07
+  epoch 2 step 2680/2814 loss 2.0691 lr 1.78e-07
+  epoch 2 step 2700/2814 loss 2.1383 lr 1.29e-07
+  epoch 2 step 2720/2814 loss 2.2723 lr 8.77e-08
+  epoch 2 step 2740/2814 loss 2.1862 lr 5.44e-08
+  epoch 2 step 2760/2814 loss 2.2629 lr 2.90e-08
+  epoch 2 step 2780/2814 loss 2.1870 lr 1.15e-08
+  epoch 2 step 2800/2814 loss 2.1488 lr 1.95e-09
+{'model': 'slm-125m', 'method': 'sft', 'examples': 15000, 'steps': 2812, 'wall_min': 10.2, 'out': '/data/checkpoints/slm-125m-sft-seed1'}
+[125m/sft] saved /data/checkpoints/slm-125m-sft-seed1 | 2812 steps | 10.2 min
+✓ App completed. View run at 
+https://modal.com/apps/aceaynon2504/main/ap-goKuMbpSrwILsBsLclOgYZ
