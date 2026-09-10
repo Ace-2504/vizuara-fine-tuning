@@ -98,7 +98,7 @@ def _judge_prompt(question: str, context: Optional[str], reference: Optional[str
             + ctx_block + f"\nQUESTION:\n{question}\n" + ref_block +
             f"\nCANDIDATE:\n{candidate}")
 
-CKPT = os.path.join(ROOT, "checkpoints")
+CKPT = os.environ.get("CKPT_DIR", os.path.join(ROOT, "checkpoints"))   # env override for Modal volume
 MAX_RESIDENT = int(os.environ.get("MAX_RESIDENT", "13"))   # 13 = pin every model, no eviction
 
 # frontend model id -> (checkpoint dir or HF repo, demo kind)
@@ -291,7 +291,8 @@ def _load_gemma(mid: str):
                                  bnb_4bit_use_double_quant=True)
         _shared_gemma = AutoModelForCausalLM.from_pretrained(
             GEMMA_BASE_ID, quantization_config=bnb, attn_implementation="eager",
-            torch_dtype=torch.bfloat16, token=tok_hf).eval()
+            torch_dtype=torch.bfloat16, token=tok_hf,
+            **({"device_map": "auto"} if DEV == "cuda" else {})).eval()
         _gemma_tok = AutoTokenizer.from_pretrained(GEMMA_BASE_ID, token=tok_hf)
         print(f"[ready] shared gemma backbone in {time.time()-t0:.1f}s  vram {_vram():.2f} GB",
               flush=True)
@@ -350,7 +351,8 @@ def _load_once(mid: str):
                                          bnb_4bit_use_double_quant=True)
                 base = AutoModelForCausalLM.from_pretrained(
                     base_id, quantization_config=bnb, attn_implementation="eager",
-                    torch_dtype=torch.bfloat16, token=tok_hf)
+                    torch_dtype=torch.bfloat16, token=tok_hf,
+                    **({"device_map": "auto"} if DEV == "cuda" else {}))
             except Exception as e:
                 print(f"[warn] 4-bit unavailable ({type(e).__name__}); using fp16", flush=True)
                 base = AutoModelForCausalLM.from_pretrained(
